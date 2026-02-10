@@ -11,11 +11,17 @@ public:
     std::vector<double> W;
 
     int nx, ny;
+    double dx, dy;
 
-    Spacetime(int nx_, int ny_);
+    double xl, xu, yl, yu; 
+
+    Spacetime();
 
     // on-gridpoint accessor
     const double get_val(const std::vector<double>& field, int i, int j) const;
+    // inbetween gridpoint interpolator
+    const double get_val_interp(const std::vector<double>& field, double x, double y) const;
+
 
     void hello() const;
 

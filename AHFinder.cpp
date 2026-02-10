@@ -6,16 +6,35 @@
 AHFinder::AHFinder(int npoints) {
     sigma.resize(npoints);
     f.resize(npoints);
-    psi_sigma.resize(npoints);
+    psi.resize(npoints);
     num_points = npoints;
 }
 
-void AHFinder::initialize() {
+void AHFinder::initialize(const Spacetime& spacetime) {
+    double x = 0., y = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        sigma[i] = 2.0 * Params::pi * i / num_points;
+        double d_sigma = 0.5 * Params::pi / num_points;
+        // cell centred
+        sigma[i] = (i + 1./2.) * d_sigma;
+        x = f[i] * sin(sigma[i]);
+        y = f[i] * cos(sigma[i]);
         f[i] = 1.0;           // initial guess for horizon radius
-        psi_sigma[i] = 0.0;
+        psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
     }
+}
+
+// rough area
+double AHFinder::area() {
+    double d_sigma = 0.5 * Params::pi / num_points;
+    double A = 0.;
+    double dfds = 0.;
+    double geom = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        geom = psi[i] * sqrt(f[i]*f[i] + dfds*dfds);
+        A += 2. * Params::pi * f[i] * sin(sigma[i]) * geom * d_sigma;
+    }
+    // two because of reflective symmetry
+    return 2.*A;
 }
 
 void AHFinder::update(const Spacetime& spacetime) {
@@ -24,8 +43,8 @@ void AHFinder::update(const Spacetime& spacetime) {
 }
 
 void AHFinder::hello() const {
-    std::cout << "Hello from AHFinder! "
-              << "Number of horizon points = "
+    std::cout << "Hello from AHFinder!\n"
+              << " - Number of horizon points = "
               << num_points << std::endl;
 }
 

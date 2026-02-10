@@ -18,7 +18,7 @@ int main() {
     // Objects
 
     // spacetime holds 2d fields and 2d manifold information
-    Spacetime spacetime(Params::NX, Params::NY);
+    Spacetime spacetime;
 
     // loads initial data files e.g. .dat
     DataLoader loader;
@@ -35,14 +35,24 @@ int main() {
     loader.hello();
     ahfinder.hello();
 
+    ///////////////////////////
+    // Run Code
+    
+    std::cout << "\n";
+    std::cout << "*======================*\n";
+    std::cout << "| Finding Horizon <> ! |\n";
+    std::cout << "*======================*\n\n";
+
     // dev 
-    ahfinder.initialize();
+    ahfinder.initialize(spacetime);
     ahfinder.update(spacetime);
+    std::cout << "Horizon Area ~ " << ahfinder.area() << "\n";
 
     ///////////////////////////
     // Close Program
     
-    std::cout << "\n*=================*\n";
+    std::cout << "\n";
+    std::cout << "*=================*\n";
     std::cout << "| Shutting Down ~ |\n";
     std::cout << "*=================*\n\n";
 
