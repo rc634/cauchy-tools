@@ -47,6 +47,13 @@ int main() {
     ahfinder.initialize(spacetime);
     ahfinder.update(spacetime);
     std::cout << "Horizon Area ~ " << ahfinder.area() << "\n";
+    std::cout << "Horizon Mass ~ " << ahfinder.mass() << "\n";
+    for (size_t i = 0; i < 1000; i++)
+    {
+        ahfinder.relax();
+    }
+    std::cout << "Relaxed Area ~ " << ahfinder.area() << "\n";
+    std::cout << "Relaxed Mass ~ " << ahfinder.mass() << "\n";
 
     ///////////////////////////
     // Close Program

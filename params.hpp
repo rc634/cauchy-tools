@@ -14,7 +14,11 @@ namespace Params {
     constexpr double YL = 0.;
     constexpr double YU = 2.;
 
-    constexpr int AH_NPOINTS = 100;
+    // courant friedrich lewis thingy 
+    constexpr double CFL = 0.25; 
+
+    // apparent horizon sample points
+    constexpr int AH_NPOINTS = 400; 
 
     constexpr double pi = M_PI;
 
