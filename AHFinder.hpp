@@ -11,6 +11,7 @@ public:
     std::vector<double> sigma;     // parameter / angular coordinate
     std::vector<double> f;         // horizon radius
     std::vector<double> psi; // psi evaluated on horizon
+    std::vector<double> dpsi_dr; // spherical radial derivative (not cylindrical radius)
     std::vector<double> dfdt; // for relaxation time updates
 
     // points 
@@ -26,6 +27,9 @@ public:
     // approx horizon mass
     double mass();
 
+    // ODE error / residual
+    double res();
+
     // approx horizon radius
     double r();
 
@@ -40,6 +44,8 @@ public:
     void update(const Spacetime& spacetime);
     void relax();
     void refresh(const Spacetime& spacetime);
+
+    void save(const std::string &filename);
 
     void hello() const;
 };
