@@ -53,7 +53,7 @@ int main() {
     std::cout << "Horizon Psi ~ " << ahfinder.psi_h() << "\n";
     std::cout << "Horizon Radius ~ " << ahfinder.r() << "\n";
     std::cout << "Horizon Res ~ " << ahfinder.res() << "\n";
-    for (size_t i = 0; i < 3000001; i++)
+    for (size_t i = 0; i < 200001; i++)
     {
         ahfinder.relax();
         ahfinder.refresh(spacetime);

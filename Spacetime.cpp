@@ -46,6 +46,8 @@ const double Spacetime::get_val(const std::vector<double>& field, int i, int j) 
 // ---- Bilinear interpolation in physical coordinates ----
 const double Spacetime::get_val_interp(const std::vector<double>& field, double x, double y) const {
     // Convert physical coordinates to fractional grid indices
+
+    // CAREFUL NEED TO IMPLEMENT CELL CENTERED STUFF!
     double i = x / dx;
     double j = y / dy;
 
@@ -89,6 +91,8 @@ inline int Spacetime::index(int i, int j) const {
 //         throw std::out_of_range("Spacetime index out of bounds");
 //     }
 // #endif
+
+    // CAREFUL, CHECK THIS IS CORRECT
     return i + nx * j;
 }
 

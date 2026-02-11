@@ -167,19 +167,20 @@ double AHFinder::area() {
 
 // rough mass
 double AHFinder::mass() {
-    double A = 0.;
-    double dA = 0.;
-    double MA = 0.;
-    double dfds = 0.;
-    double geom = 0.;
-    for (size_t i = 0; i < num_points; ++i) {
-        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
-        A += dA;
-        MA += dA * (psi[i]-1.)*2.*f[i];
-    }
-    // two because of reflective symmetry
-    return MA/A;
+    // double A = 0.;
+    // double dA = 0.;
+    // double MA = 0.;
+    // double dfds = 0.;
+    // double geom = 0.;
+    // for (size_t i = 0; i < num_points; ++i) {
+    //     geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
+    //     dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+    //     A += dA;
+    //     MA += dA * (psi[i]-1.)*2.*f[i];
+    // }
+    // // two because of reflective symmetry
+    // return MA/A;
+    return sqrt(area()/(16.*Params::pi));
 }
 
 // rough error
@@ -241,7 +242,7 @@ void AHFinder::update(const Spacetime& spacetime) {
 // update external fields such as psi[f,s] 
 void AHFinder::refresh(const Spacetime& spacetime) {
     double x = 0., y = 0.;
-    double df = ds*1.1, dpsi = 0.;
+    double df = ds, dpsi = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         // numerical 
         // update psi with new coords f,s
