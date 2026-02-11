@@ -18,9 +18,12 @@ namespace Params {
     constexpr double CFL = 0.25; 
 
     // apparent horizon sample points
-    constexpr int AH_NPOINTS = 400; 
+    constexpr int AH_NPOINTS = 64; 
 
     constexpr double pi = M_PI;
+
+    // surface resolution
+    constexpr int SURFACE_N_POINTS = 16;
 
 }
 

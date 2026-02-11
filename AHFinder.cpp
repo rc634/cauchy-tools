@@ -20,13 +20,15 @@ AHFinder::AHFinder(int npoints) {
 void AHFinder::initialize(const Spacetime& spacetime) {
     double x = 0., y = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        double d_sigma = 0.5 * Params::pi / num_points;
+
         // cell centred
-        sigma[i] = (i + 1./2.) * d_sigma;
+        sigma[i] = (i + 1./2.) * ds;
+        f[i] = 1.7;           // initial guess for horizon radius
+        dfdt[i] = 0.;
+
+        // coords for interpolation
         x = f[i] * sin(sigma[i]);
         y = f[i] * cos(sigma[i]);
-        f[i] = 1.0;           // initial guess for horizon radius
-        dfdt[i] = 0.;
         psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
     }
 }
@@ -98,18 +100,17 @@ double AHFinder::d2(const std::vector<double> &field, int i) {
     double f4 = field[i4];
     double f5 = field[i5];
 
-    return (-f5 + 16.*f4 + 30.*f3 - 16.*f2 - f1)/(12. * ds * ds);
+    return (-f5 + 16.*f4 + -30.*f3 + 16.*f2 - f1)/(12. * ds * ds);
 }
 
 // area
 double AHFinder::area() {
-    double d_sigma = 0.5 * Params::pi / num_points;
     double A = 0.;
     double dfds = 0.;
     double geom = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        A += 2. * Params::pi * f[i] * sin(sigma[i]) * geom * d_sigma;
+        A += 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
     }
     // two because of reflective symmetry
     return 2.*A;
@@ -117,18 +118,53 @@ double AHFinder::area() {
 
 // rough mass
 double AHFinder::mass() {
-    double d_sigma = 0.5 * Params::pi / num_points;
     double A = 0.;
+    double dA = 0.;
     double MA = 0.;
     double dfds = 0.;
     double geom = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        A += 2. * Params::pi * f[i] * sin(sigma[i]) * geom * d_sigma;
-        MA += A * (psi[i]-1.)*2.*f[i];
+        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+        A += dA;
+        MA += dA * (psi[i]-1.)*2.*f[i];
     }
     // two because of reflective symmetry
     return MA/A;
+}
+
+// rough psi
+double AHFinder::psi_h() {
+    double A = 0.;
+    double dA = 0.;
+    double psiA = 0.;
+    double dfds = 0.;
+    double geom = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
+        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+        A += dA;
+        psiA += dA * psi[i];
+    }
+    // two because of reflective symmetry
+    return psiA/A;
+}
+
+// rough r
+double AHFinder::r() {
+    double A = 0.;
+    double dA = 0.;
+    double rA = 0.;
+    double dfds = 0.;
+    double geom = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
+        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+        A += dA;
+        rA += dA * f[i];
+    }
+    // two because of reflective symmetry
+    return rA/A;
 }
 
 void AHFinder::update(const Spacetime& spacetime) {
@@ -136,10 +172,41 @@ void AHFinder::update(const Spacetime& spacetime) {
     // code here 
 }
 
+// to be called after we update the surface
+// update external fields such as psi[f,s] 
+void AHFinder::refresh(const Spacetime& spacetime) {
+    double x = 0., y = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        // update psi with new coords f,s
+        x = f[i] * sin(sigma[i]);
+        y = f[i] * cos(sigma[i]);
+        psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
+    }
+
+}
+
 void AHFinder::relax() {
     // Poisson solver towards correct surface
+    double term1 = 0.;
+    double term2 = 0.;
+    double term3 = 0.;
+    double dfds = 0.;
+    double dpsi_dr = 0.;
+    double r = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        dfdt[i] = - 0.01 * f[i];
+        // dfdt[i] = - 0.2 * f[i];
+        dfds = d(f,i);
+        r = f[i];
+        //
+        term1 = (r*r + dfds*dfds)/(r*r + 2.*dfds*dfds);
+        //
+        term2 = (8. * dfds * dpsi_dr / psi[i] 
+                    - 8. *d (psi,i) / psi[i] 
+                    - dfds * cos(sigma[i])/sin(sigma[i]));
+        //
+        term3 = (1./r)*(2.*r*r + dfds*dfds)/(r*r + dfds*dfds);
+        //
+        dfdt[i] = d2(f,i) - (term1*term2 + term3);
     }
     for (size_t i = 0; i < num_points; ++i) {
         f[i] = f[i] + dfdt[i] * dt;

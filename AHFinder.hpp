@@ -22,9 +22,15 @@ public:
 
     // returns horizon area
     double area();
-    
+
     // approx horizon mass
     double mass();
+
+    // approx horizon radius
+    double r();
+
+    // approx horizon psi
+    double psi_h();
 
     // partial derivs
     double d(const std::vector<double> &field, int i);
@@ -33,6 +39,7 @@ public:
     void initialize(const Spacetime& spacetime);
     void update(const Spacetime& spacetime);
     void relax();
+    void refresh(const Spacetime& spacetime);
 
     void hello() const;
 };
