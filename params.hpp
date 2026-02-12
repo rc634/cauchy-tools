@@ -5,20 +5,20 @@
 
 namespace Params {
 
-    constexpr int NX = 512;
-    constexpr int NY = 512;
+    constexpr int NX = 256;
+    constexpr int NY = 256;
 
     // coords of x/y axes, may not be cartesian
     constexpr double XL = 0.;
-    constexpr double XU = 10.;
+    constexpr double XU = 120.;
     constexpr double YL = 0.;
-    constexpr double YU = 10.;
+    constexpr double YU = 120.;
 
     // courant friedrich lewis thingy 
     constexpr double CFL = 0.25; 
 
     // apparent horizon sample points
-    constexpr int AH_NPOINTS = 64; 
+    constexpr int AH_NPOINTS = 256; 
 
     constexpr double pi = M_PI;
 

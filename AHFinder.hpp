@@ -21,11 +21,20 @@ public:
 
     AHFinder(int npoints);
 
-    // returns horizon area
+    // returns geometric horizon area
     double area();
 
-    // approx horizon mass
+    // returns flat metric area
+    double area_flat();
+
+    // irreducible horizon mass
     double mass();
+
+    // Misner Sharp mass isotropic
+    double mass_MS();
+
+    // Misner Sharp mass sc gauge
+    double mass_SC();
 
     // ODE error / residual
     double res();
@@ -40,7 +49,7 @@ public:
     double d(const std::vector<double> &field, int i);
     double d2(const std::vector<double> &field, int i);
 
-    void initialize(const Spacetime& spacetime);
+    void initialize(const Spacetime& spacetime, const double f0);
     void update(const Spacetime& spacetime);
     void relax();
     void refresh(const Spacetime& spacetime);

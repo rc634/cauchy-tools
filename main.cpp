@@ -27,6 +27,9 @@ int main() {
     // apparent horizon finder object
     AHFinder ahfinder(Params::AH_NPOINTS);
 
+    // pure integrating surface, too heavy for relaxation!
+    AHFinder surface(Params::AH_NPOINTS*16);
+
    
     
     //////////////////////////
@@ -34,6 +37,7 @@ int main() {
     spacetime.hello();
     loader.hello();
     ahfinder.hello();
+    surface.hello();
 
     ///////////////////////////
     // Run Code
@@ -43,27 +47,51 @@ int main() {
     std::cout << "| Finding Horizon <> ! |\n";
     std::cout << "*======================*\n\n";
 
+    //////////////////////
     // dev 
-    ahfinder.initialize(spacetime);
+
+    // initial radii
+    double r_horizon = 20.;
+    double r_extraction = 5.;
+
+    // data
+    ahfinder.initialize(spacetime,r_horizon);
+    surface.initialize(spacetime,r_extraction);
     ahfinder.update(spacetime);
     ahfinder.save("before");
 
+    // initial output from AHFinder
     std::cout << "Horizon Area ~ " << ahfinder.area() << "\n";
     std::cout << "Horizon Mass ~ " << ahfinder.mass() << "\n";
     std::cout << "Horizon Psi ~ " << ahfinder.psi_h() << "\n";
     std::cout << "Horizon Radius ~ " << ahfinder.r() << "\n";
     std::cout << "Horizon Res ~ " << ahfinder.res() << "\n";
-    for (size_t i = 0; i < 200001; i++)
+    std::cout << "* ~ ~ * \n";
+
+    // initial output from surface 
+    std::cout << "Surface Area = " << surface.area_flat() << "\n";
+    std::cout << "Surface psi = " << surface.psi_h() << "\n";
+    std::cout << "Surface Misner-Sharp Mass = " << surface.mass_MS() << "\n";
+    std::cout << "Surface Schwarzschild Mass = " << surface.mass_SC() << "\n";
+    std::cout << "Surface Hawking Mass = " << surface.mass() << "\n";
+    std::cout << "* ~ ~ * \n";
+
+    // relaxation iterations for AH solver          
+    for (size_t i = 0; i < 2000001; i++)
     {
         ahfinder.relax();
         ahfinder.refresh(spacetime);
-        if (i%10000==0) {
+        if (i%200000==0) {
+            // a breather step, we can do more expensice things here
             std::cout << " - iter : " << i << ", ";
             std::cout << " r ~ " << ahfinder.r() << ", ";
             std::cout << " A ~ " << ahfinder.area() << ", ";
             std::cout << " psi ~ " << ahfinder.psi_h() << ", ";
             std::cout << " M ~ " << ahfinder.mass() << ", ";
             std::cout << " res ~ " << ahfinder.res() << "\n";
+            std::cout << " - ~ surf : Area ~ " << surface.area() 
+              << " : Misner-Sharp Mass ~ " << surface.mass_MS() << "\n";
+            std::cout << " * \n";
         }
     }
 

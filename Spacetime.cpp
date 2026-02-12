@@ -23,7 +23,8 @@ void Spacetime::hello() const {
     std::cout << "Hello from Spacetime! \n"
               << " - Grid size = " << nx << " x " << ny << "\n"
               << " - Boundaries at [XL:" << xl << ",XU:" << xu 
-              << ",YL:" << yl << ",YU:" << yu << "]\n";
+              << ",YL:" << yl << ",YU:" << yu
+              << ",DX:" << dx << ",DY:" << dy << "]\n";
 
     // debugging / writing
     // for (size_t i = 0; i < nx; i++)
@@ -48,8 +49,8 @@ const double Spacetime::get_val_interp(const std::vector<double>& field, double 
     // Convert physical coordinates to fractional grid indices
 
     // CAREFUL NEED TO IMPLEMENT CELL CENTERED STUFF!
-    double i = x / dx;
-    double j = y / dy;
+    double i = (x - 0.5*dx) / dx;
+    double j = (y - 0.5*dy) / dy;
 
     // Floor indices
     int i0 = static_cast<int>(std::floor(i));

@@ -14,26 +14,29 @@ AHFinder::AHFinder(int npoints) {
     dfdt.resize(npoints);
     num_points = npoints;
 
-    double dx = (Params::XU-Params::XL)/Params::NX;
-    double dy = (Params::YU-Params::YL)/Params::NY;
+    // double dx = (Params::XU-Params::XL)/Params::NX;
+    // double dy = (Params::YU-Params::YL)/Params::NY;
     //dt = Params::CFL * std::min(dx,dy);
     ds = 0.5 * Params::pi / num_points;
     dt = Params::CFL * ds * ds;
 }
 
-void AHFinder::initialize(const Spacetime& spacetime) {
+void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
     double x = 0., y = 0.;
     for (size_t i = 0; i < num_points; ++i) {
 
         // cell centred
         sigma[i] = (i + 1./2.) * ds;
-        f[i] = 1.7;           // initial guess for horizon radius
+        f[i] = f0;           // initial guess for horizon radius
         dfdt[i] = 0.;
 
         // update interpolated values
         // e.g. psi, dpsi_dr
         refresh(spacetime); 
+
     }
+
+    std::cout << " - setting f[i] = " << f0 << std::endl;
 }
 
 // // 1st derivative // 4th order
@@ -149,10 +152,10 @@ double AHFinder::d2(const std::vector<double> &field, int i) {
     double f2 = field[i2];
     double f3 = field[i3];
 
-    return (f3 - 2.*f2 + f1)/(ds * ds);
+    return (f3 - 2.*f2 + f1)/pow(ds,2);
 }
 
-// area
+// proper area
 double AHFinder::area() {
     double A = 0.;
     double dfds = 0.;
@@ -165,22 +168,58 @@ double AHFinder::area() {
     return 2.*A;
 }
 
-// rough mass
+// flat (conformal) area
+double AHFinder::area_flat() {
+    double A = 0.;
+    double dfds = 0.;
+    double geom = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        geom = sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
+        A += 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+    }
+    // two because of reflective symmetry
+    return 2.*A;
+}
+
+// irreducible horizon mass
 double AHFinder::mass() {
-    // double A = 0.;
-    // double dA = 0.;
-    // double MA = 0.;
-    // double dfds = 0.;
-    // double geom = 0.;
-    // for (size_t i = 0; i < num_points; ++i) {
-    //     geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-    //     dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
-    //     A += dA;
-    //     MA += dA * (psi[i]-1.)*2.*f[i];
-    // }
-    // // two because of reflective symmetry
-    // return MA/A;
-    return sqrt(area()/(16.*Params::pi));
+    return 1/16.*sqrt(area()/(Params::pi));
+}
+
+// rough mass
+double AHFinder::mass_MS() {
+    double A = 0.;
+    double dA = 0.;
+    double MA = 0.;
+    double dfds = 0.;
+    double geom = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
+        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+        A += dA;
+        // isotropic
+        MA += dA * (psi[i]-1.)*2.*f[i];
+    }
+    // two because of reflective symmetry
+    return MA/A;
+}
+
+// rough mass
+double AHFinder::mass_SC() {
+    double A = 0.;
+    double dA = 0.;
+    double MA = 0.;
+    double dfds = 0.;
+    double geom = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
+        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+        A += dA;
+        // schwarzschild
+        MA += dA * (1.-pow(psi[i],-4))*f[i]/2.;
+    }
+    // two because of reflective symmetry
+    return MA/A;
 }
 
 // rough error
@@ -242,9 +281,11 @@ void AHFinder::update(const Spacetime& spacetime) {
 // update external fields such as psi[f,s] 
 void AHFinder::refresh(const Spacetime& spacetime) {
     double x = 0., y = 0.;
-    double df = ds, dpsi = 0.;
+    double df = 0., dpsi = 0.;
+    double test_bh_mass = 1.0;
     for (size_t i = 0; i < num_points; ++i) {
         // numerical 
+        df = ds * f[i];
         // update psi with new coords f,s
         x = f[i] * sin(sigma[i]);
         y = f[i] * cos(sigma[i]);
@@ -259,8 +300,8 @@ void AHFinder::refresh(const Spacetime& spacetime) {
         dpsi_dr[i]=dpsi/(2.*df);
 
         // // algebraic schwarzschild
-        // psi[i] = 1. + 0.5/f[i];
-        // dpsi_dr[i] = - 0.5/f[i]/f[i];
+        // psi[i] = 1. + test_bh_mass/f[i]/2.;
+        // dpsi_dr[i] = - test_bh_mass/f[i]/f[i]/2.;
     }
 
 }
