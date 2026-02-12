@@ -183,7 +183,7 @@ double AHFinder::area_flat() {
 
 // irreducible horizon mass
 double AHFinder::mass() {
-    return 1/16.*sqrt(area()/(Params::pi));
+    return 0.25*sqrt(area()/(Params::pi));
 }
 
 // rough mass

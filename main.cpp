@@ -51,8 +51,8 @@ int main() {
     // dev 
 
     // initial radii
-    double r_horizon = 20.;
-    double r_extraction = 5.;
+    double r_horizon = Params::RH;
+    double r_extraction = Params::RX;
 
     // data
     ahfinder.initialize(spacetime,r_horizon);
@@ -94,6 +94,22 @@ int main() {
             std::cout << " * \n";
         }
     }
+
+    // initial output from AHFinder
+    std::cout << "Horizon Area ~ " << ahfinder.area() << "\n";
+    std::cout << "Horizon Mass ~ " << ahfinder.mass() << "\n";
+    std::cout << "Horizon Psi ~ " << ahfinder.psi_h() << "\n";
+    std::cout << "Horizon Radius ~ " << ahfinder.r() << "\n";
+    std::cout << "Horizon Res ~ " << ahfinder.res() << "\n";
+    std::cout << "* ~ ~ * \n";
+
+    // initial output from surface 
+    std::cout << "Surface Area = " << surface.area_flat() << "\n";
+    std::cout << "Surface psi = " << surface.psi_h() << "\n";
+    std::cout << "Surface Misner-Sharp Mass = " << surface.mass_MS() << "\n";
+    std::cout << "Surface Schwarzschild Mass = " << surface.mass_SC() << "\n";
+    std::cout << "Surface Hawking Mass = " << surface.mass() << "\n";
+    std::cout << "* ~ ~ * \n";
 
     // save after
     ahfinder.save("after");
