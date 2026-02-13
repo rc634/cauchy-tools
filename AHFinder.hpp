@@ -21,6 +21,9 @@ public:
 
     AHFinder(int npoints);
 
+    // area infinitessimal on surface
+    double dA(const int i);
+
     // returns geometric horizon area
     double area();
 
@@ -44,6 +47,9 @@ public:
 
     // approx horizon psi
     double psi_h();
+
+    // currently simple a/b, not root(1-aa/bb)
+    double eccentricity();
 
     // partial derivs
     double d(const std::vector<double> &field, int i);

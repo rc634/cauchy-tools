@@ -155,14 +155,20 @@ double AHFinder::d2(const std::vector<double> &field, int i) {
     return (f3 - 2.*f2 + f1)/pow(ds,2);
 }
 
+
+// area infinitessimal
+// inline this later?
+double AHFinder::dA(const int i) {
+    return 2. * Params::pi * pow(psi[i],4) 
+            * sqrt((f[i]*f[i]) + d(f,i)*d(f,i))
+            * f[i] * sin(sigma[i]) * ds;
+}
+
 // proper area
 double AHFinder::area() {
     double A = 0.;
-    double dfds = 0.;
-    double geom = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        A += 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
+        A += dA(i);
     }
     // two because of reflective symmetry
     return 2.*A;
@@ -186,91 +192,84 @@ double AHFinder::mass() {
     return 0.25*sqrt(area()/(Params::pi));
 }
 
-// rough mass
+
+
 double AHFinder::mass_MS() {
     double A = 0.;
-    double dA = 0.;
-    double MA = 0.;
-    double dfds = 0.;
-    double geom = 0.;
+    double B = 0.;
+    double integrand = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
-        A += dA;
-        // isotropic
-        MA += dA * (psi[i]-1.)*2.*f[i];
+        // area 
+        A += dA(i);
+        // function integral B = int integrand dA
+        integrand = (psi[i]-1.)*2.*f[i];
+        B += dA(i) * integrand;
     }
     // two because of reflective symmetry
-    return MA/A;
+    return B/A;
 }
 
-// rough mass
 double AHFinder::mass_SC() {
     double A = 0.;
-    double dA = 0.;
-    double MA = 0.;
-    double dfds = 0.;
-    double geom = 0.;
+    double B = 0.;
+    double integrand = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
-        A += dA;
-        // schwarzschild
-        MA += dA * (1.-pow(psi[i],-4))*f[i]/2.;
+        // area 
+        A += dA(i);
+        // function integral B = int integrand dA
+        integrand = (1.-pow(psi[i],-4))*f[i]/2.;
+        B += dA(i) * integrand;
     }
     // two because of reflective symmetry
-    return MA/A;
+    return B/A;
 }
 
-// rough error
+
 double AHFinder::res() {
     double A = 0.;
-    double dA = 0.;
-    double dfds_A = 0.;
-    double geom = 0.;
+    double B = 0.;
+    double integrand = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
-        A += dA;
-        dfds_A += dA * dfdt[i];
+        // area 
+        A += dA(i);
+        B += dA(i) * dfdt[i];
     }
     // two because of reflective symmetry
-    return dfds_A/A;
+    return B/A;
 }
 
-// rough psi
+
 double AHFinder::psi_h() {
     double A = 0.;
-    double dA = 0.;
-    double psiA = 0.;
-    double dfds = 0.;
-    double geom = 0.;
+    double B = 0.;
+    double integrand = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
-        A += dA;
-        psiA += dA * psi[i];
+        // area 
+        A += dA(i);
+        B += dA(i) * psi[i];
     }
     // two because of reflective symmetry
-    return psiA/A;
+    return B/A;
 }
 
-// rough r
+// average r
 double AHFinder::r() {
     double A = 0.;
-    double dA = 0.;
-    double rA = 0.;
-    double dfds = 0.;
-    double geom = 0.;
+    double B = 0.;
+    double integrand = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        geom = pow(psi[i],8) * sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
-        dA = 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
-        A += dA;
-        rA += dA * f[i];
+        // area 
+        A += dA(i);
+        B += dA(i) * f[i];
     }
     // two because of reflective symmetry
-    return rA/A;
+    return B/A;
 }
+
+double AHFinder::eccentricity() {
+    return f[0]/f[num_points-1];
+}
+
 
 void AHFinder::update(const Spacetime& spacetime) {
     // Placeholder for expansion/minimization logic

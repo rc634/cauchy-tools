@@ -28,7 +28,7 @@ int main() {
     AHFinder ahfinder(Params::AH_NPOINTS);
 
     // pure integrating surface, too heavy for relaxation!
-    AHFinder surface(Params::AH_NPOINTS*16);
+    AHFinder surface(Params::EX_NPOINTS);
 
    
     
@@ -66,6 +66,7 @@ int main() {
     std::cout << "Horizon Psi ~ " << ahfinder.psi_h() << "\n";
     std::cout << "Horizon Radius ~ " << ahfinder.r() << "\n";
     std::cout << "Horizon Res ~ " << ahfinder.res() << "\n";
+    std::cout << "Horizon Eccentricity ~ " << ahfinder.eccentricity() << "\n";
     std::cout << "* ~ ~ * \n";
 
     // initial output from surface 
@@ -88,6 +89,7 @@ int main() {
             std::cout << " A ~ " << ahfinder.area() << ", ";
             std::cout << " psi ~ " << ahfinder.psi_h() << ", ";
             std::cout << " M ~ " << ahfinder.mass() << ", ";
+            std::cout << " e ~ " << ahfinder.eccentricity() << ", ";
             std::cout << " res ~ " << ahfinder.res() << "\n";
             std::cout << " - ~ surf : Area ~ " << surface.area() 
               << " : Misner-Sharp Mass ~ " << surface.mass_MS() << "\n";
@@ -101,6 +103,7 @@ int main() {
     std::cout << "Horizon Psi ~ " << ahfinder.psi_h() << "\n";
     std::cout << "Horizon Radius ~ " << ahfinder.r() << "\n";
     std::cout << "Horizon Res ~ " << ahfinder.res() << "\n";
+    std::cout << "Horizon Eccentricity ~ " << ahfinder.eccentricity() << "\n";
     std::cout << "* ~ ~ * \n";
 
     // initial output from surface 
