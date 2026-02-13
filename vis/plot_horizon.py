@@ -27,13 +27,13 @@ fig, ax = plt.subplots(
 # ax.plot(theta_full, r_full, color='black', linewidth=2)
 ax.plot(5*theta, r/r, color='darkgrey', linewidth=1)
 ax.plot(5*theta, 3*r/r, color='lightgrey', linewidth=0.5)
-ax.plot(5*theta, 10*r/r, color='darkgrey', linewidth=1)
-ax.plot(5*theta, 30*r/r, color='lightgrey', linewidth=0.5)
+# ax.plot(5*theta, 10*r/r, color='darkgrey', linewidth=1)
+# ax.plot(5*theta, 30*r/r, color='lightgrey', linewidth=0.5)
 # ax.plot(5*theta,100*r/r, color='darkgrey', linewidth=1)
 ax.plot(theta, r, color='black', linewidth=1)
-ax.plot(theta + np.pi/2., r[::-1], color='black', linewidth=1)
-ax.plot(theta + np.pi, r, color='black', linewidth=1)
-ax.plot(theta + 3.*np.pi/2., r[::-1], color='black', linewidth=1)
+# ax.plot(theta + np.pi/2., r[::-1], color='black', linewidth=1)
+# ax.plot(theta + np.pi, r, color='black', linewidth=1)
+# ax.plot(theta + 3.*np.pi/2., r[::-1], color='black', linewidth=1)
 
 # Minimal styling
 ax.set_xticks([])
