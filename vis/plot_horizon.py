@@ -28,7 +28,7 @@ fig, ax = plt.subplots(
 ax.plot(5*theta, r/r, color='darkgrey', linewidth=1)
 ax.plot(5*theta, 3*r/r, color='lightgrey', linewidth=0.5)
 ax.plot(5*theta, 10*r/r, color='darkgrey', linewidth=1)
-ax.plot(5*theta, 30*r/r, color='lightgrey', linewidth=0.5)
+ax.plot(5*theta, 20*r/r, color='lightgrey', linewidth=0.5)
 # ax.plot(5*theta,100*r/r, color='darkgrey', linewidth=1)
 ax.plot(theta, r, color='black', linewidth=1)
 ax.plot(theta + np.pi/2., r[::-1], color='black', linewidth=1)
