@@ -22,7 +22,7 @@ int main() {
 
     // loads initial data files e.g. .dat
     DataLoader loader;
-    loader.loadCSV("data/psi.dat", spacetime);
+    loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
 
     // apparent horizon finder object
     AHFinder ahfinder(Params::AH_NPOINTS);
@@ -111,7 +111,8 @@ int main() {
     std::cout << "Surface psi = " << surface.psi_h() << "\n";
     std::cout << "Surface Misner-Sharp Mass = " << surface.mass_MS() << "\n";
     std::cout << "Surface Schwarzschild Mass = " << surface.mass_SC() << "\n";
-    std::cout << "Surface Hawking Mass = " << surface.mass() << "\n";
+    std::cout << "Irreducible Mass = " << surface.mass() << "\n";
+    std::cout << "J_H = " << surface.J_H() << "\n";
     std::cout << "* ~ ~ * \n";
 
     // save after

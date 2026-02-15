@@ -10,8 +10,10 @@ public:
     // 1D horizon representation
     std::vector<double> sigma;     // parameter / angular coordinate
     std::vector<double> f;         // horizon radius
+    std::vector<double> W;         // curvature
     std::vector<double> psi; // psi evaluated on horizon
-    std::vector<double> dpsi_dr; // spherical radial derivative (not cylindrical radius)
+    std::vector<double> dpsi_dR; // spherical radial derivative (not cylindrical radius)
+    std::vector<double> dW_dR; // spherical radial derivative (not cylindrical radius)
     std::vector<double> dfdt; // for relaxation time updates
 
     // points 
@@ -32,6 +34,9 @@ public:
 
     // irreducible horizon mass
     double mass();
+
+    // horizon angular momentum
+    double J_H();
 
     // Misner Sharp mass isotropic
     double mass_MS();

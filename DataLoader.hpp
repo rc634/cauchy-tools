@@ -9,7 +9,9 @@ class DataLoader {
 public:
     DataLoader() = default;
 
-    void loadCSV(const std::string& filename, Spacetime& spacetime);
+    void loadCSV(Spacetime& spacetime, 
+                const std::string& filename1, 
+                const std::string& filename2);
 
     void hello() const;
 };

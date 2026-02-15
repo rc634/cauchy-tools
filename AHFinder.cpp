@@ -10,7 +10,9 @@ AHFinder::AHFinder(int npoints) {
     sigma.resize(npoints);
     f.resize(npoints);
     psi.resize(npoints);
-    dpsi_dr.resize(npoints);
+    W.resize(npoints);
+    dpsi_dR.resize(npoints);
+    dW_dR.resize(npoints);
     dfdt.resize(npoints);
     num_points = npoints;
 
@@ -31,7 +33,7 @@ void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
         dfdt[i] = 0.;
 
         // update interpolated values
-        // e.g. psi, dpsi_dr
+        // e.g. psi, dpsi_dR, dW_dR
         refresh(spacetime); 
 
     }
@@ -192,6 +194,24 @@ double AHFinder::mass() {
     return 0.25*sqrt(area()/(Params::pi));
 }
 
+// J
+double AHFinder::J_H() {
+    double J = 0;
+    double dWdz = 0.;
+    double dWdr = 0.;
+    for (size_t i = 0; i < num_points; ++i) {
+        //calculate cylindrical coord partial derivs
+        dWdr = sin(sigma[i]) * dW_dR[i] + cos(sigma[i]) * d(W,i) / f[i];
+        dWdz = cos(sigma[i]) * dW_dR[i] - sin(sigma[i]) * d(W,i) / f[i];
+
+        J += 4. * Params::pi * pow(psi[i],-8) * 
+        (f[i] * dWdr - W[i] -f[i]*d(f,i)*dWdz) *
+        sin(sigma[i]) * ds;
+    }
+    // factor of two for reflection symmetry
+    return 2. * J;
+}
+
 
 
 double AHFinder::mass_MS() {
@@ -280,7 +300,7 @@ void AHFinder::update(const Spacetime& spacetime) {
 // update external fields such as psi[f,s] 
 void AHFinder::refresh(const Spacetime& spacetime) {
     double x = 0., y = 0.;
-    double df = 0., dpsi = 0.;
+    double df = 0., dpsi = 0., dW=0.;
     double test_bh_mass = 1.0;
     for (size_t i = 0; i < num_points; ++i) {
         // numerical 
@@ -289,18 +309,23 @@ void AHFinder::refresh(const Spacetime& spacetime) {
         x = f[i] * sin(sigma[i]);
         y = f[i] * cos(sigma[i]);
         psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
+        W[i] = spacetime.get_val_interp(spacetime.W,x,y);
         // calculate d_psi/d_r
         x = (f[i] + df) * sin(sigma[i]);
         y = (f[i] + df) * cos(sigma[i]);
         dpsi = spacetime.get_val_interp(spacetime.psi,x,y);
+        dW = spacetime.get_val_interp(spacetime.W,x,y);
         x = (f[i] - df) * sin(sigma[i]);
         y = (f[i] - df) * cos(sigma[i]);
         dpsi -= spacetime.get_val_interp(spacetime.psi,x,y);
-        dpsi_dr[i]=dpsi/(2.*df);
+        dW -= spacetime.get_val_interp(spacetime.W,x,y);
+        // set values for spheical radial deriv
+        dpsi_dR[i]=dpsi/(2.*df);
+        dW_dR[i]=dW/(2.*df);
 
         // // algebraic schwarzschild
         // psi[i] = 1. + test_bh_mass/f[i]/2.;
-        // dpsi_dr[i] = - test_bh_mass/f[i]/f[i]/2.;
+        // dpsi_dR[i] = - test_bh_mass/f[i]/f[i]/2.;
     }
 
 }
@@ -311,17 +336,17 @@ void AHFinder::relax() {
     double term2 = 0.;
     double term3 = 0.;
     double dfds = 0.;
-    double r = 0.;
+    double R = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         // dfdt[i] = - 0.2 * f[i];
         dfds = d(f,i);
-        r = f[i];
+        R = f[i];
         //
-        term1 = (dfds + pow(dfds,3)/r/r)*( cos(sigma[i])/sin(sigma[i]) + 4.*d(psi,i)/psi[i]);
+        term1 = (dfds + pow(dfds,3)/R/R)*( cos(sigma[i])/sin(sigma[i]) + 4.*d(psi,i)/psi[i]);
         //
-        term2 = - dfds * dfds * (4.*dpsi_dr[i]/psi[i] + 3./r);
+        term2 = - dfds * dfds * (4.*dpsi_dR[i]/psi[i] + 3./R);
         //
-        term3 = -2.*r - 4.*r*r*dpsi_dr[i]/psi[i];
+        term3 = -2.*R - 4.*R*R*dpsi_dR[i]/psi[i];
         //
         dfdt[i] = d2(f,i) + term1 + term2 + term3;
     }

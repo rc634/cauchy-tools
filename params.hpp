@@ -5,14 +5,14 @@
 
 namespace Params {
 
-    constexpr int NX = 1024;
-    constexpr int NY = 1024;
+    constexpr int NX = 512;
+    constexpr int NY = 512;
 
     // coords of x/y axes, may not be cartesian
     constexpr double XL = 0.;
-    constexpr double XU = 5.;
+    constexpr double XU = 20.;
     constexpr double YL = 0.;
-    constexpr double YU = 5.;
+    constexpr double YU = 20.;
 
     // courant friedrich lewis thingy 
     constexpr double CFL = 0.25; 
