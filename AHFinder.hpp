@@ -37,6 +37,7 @@ public:
 
     // horizon angular momentum
     double J_H();
+    double a_H(); // normalised by M
 
     // Misner Sharp mass isotropic
     double mass_MS();

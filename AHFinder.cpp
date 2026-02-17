@@ -197,19 +197,23 @@ double AHFinder::mass() {
 // J
 double AHFinder::J_H() {
     double J = 0;
-    double dWdz = 0.;
-    double dWdr = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        //calculate cylindrical coord partial derivs
-        dWdr = sin(sigma[i]) * dW_dR[i] + cos(sigma[i]) * d(W,i) / f[i];
-        dWdz = cos(sigma[i]) * dW_dR[i] - sin(sigma[i]) * d(W,i) / f[i];
-
-        J += 4. * Params::pi * pow(psi[i],-8) * 
-        (f[i] * dWdr - W[i] -f[i]*d(f,i)*dWdz) *
-        sin(sigma[i]) * ds;
+        // calculate J_H, formula in notes/paper
+        J += 4. * Params::pi * 
+        ( 
+            f[i]*f[i]*dW_dR[i] + f[i]*W[i] 
+            - W[i]*d(f,i)*sin(sigma[i])*cos(sigma[i])
+            - sin(sigma[i])*sin(sigma[i])*d(f,i)*f[i]*f[i]*d(W,i)
+        ) 
+        * f[i] * sin(sigma[i]) * sin(sigma[i]) * ds;
     }
     // factor of two for reflection symmetry
     return 2. * J;
+}
+
+// J
+double AHFinder::a_H() {
+    return J_H()/mass();
 }
 
 
