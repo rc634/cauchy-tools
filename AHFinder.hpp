@@ -33,11 +33,14 @@ public:
     double area_flat();
 
     // irreducible horizon mass
+    double mass_irr();
+    // full mass 
     double mass();
 
     // horizon angular momentum
     double J_H();
     double a_H(); // normalised by M
+    double chi_H(); // normalised by M^2
 
     // Misner Sharp mass isotropic
     double mass_MS();

@@ -60,14 +60,6 @@ int main() {
     ahfinder.update(spacetime);
     ahfinder.save("before");
 
-    // initial output from AHFinder
-    std::cout << "Horizon Area ~ " << ahfinder.area() << "\n";
-    std::cout << "Horizon Mass ~ " << ahfinder.mass() << "\n";
-    std::cout << "Horizon Psi ~ " << ahfinder.psi_h() << "\n";
-    std::cout << "Horizon Radius ~ " << ahfinder.r() << "\n";
-    std::cout << "Horizon Res ~ " << ahfinder.res() << "\n";
-    std::cout << "Horizon Eccentricity ~ " << ahfinder.eccentricity() << "\n";
-    std::cout << "* ~ ~ * \n";
 
     // initial output from surface 
     std::cout << "Surface Area = " << surface.area_flat() << "\n";
@@ -91,29 +83,23 @@ int main() {
             std::cout << " M ~ " << ahfinder.mass() << ", ";
             std::cout << " e ~ " << ahfinder.eccentricity() << ", ";
             std::cout << " res ~ " << ahfinder.res() << "\n";
-            std::cout << " - ~ surf : Area ~ " << surface.area() 
-              << " : Misner-Sharp Mass ~ " << surface.mass_MS() << "\n";
             std::cout << " * \n";
         }
     }
 
     // initial output from AHFinder
     std::cout << "Horizon Area = " << ahfinder.area() << "\n";
+    std::cout << "Horizon Irreducible Mass = " << ahfinder.mass_irr() << "\n";
     std::cout << "Horizon Mass = " << ahfinder.mass() << "\n";
     std::cout << "Horizon Spin = " << surface.a_H() << "\n";
+    std::cout << "Horizon Dimensionless Spin = " << surface.chi_H() << "\n";
     std::cout << "Horizon Psi = " << ahfinder.psi_h() << "\n";
     std::cout << "Horizon Radius = " << ahfinder.r() << "\n";
     std::cout << "Horizon Res = " << ahfinder.res() << "\n";
     std::cout << "Horizon Eccentricity ~ " << ahfinder.eccentricity() << "\n";
     std::cout << "* ~ ~ * \n";
 
-    // initial output from surface 
-    std::cout << "Surface Area = " << surface.area_flat() << "\n";
-    std::cout << "Surface psi = " << surface.psi_h() << "\n";
-    std::cout << "Surface Misner-Sharp Mass = " << surface.mass_MS() << "\n";
-    std::cout << "Surface Schwarzschild Mass = " << surface.mass_SC() << "\n";
-    std::cout << "Irreducible Mass = " << surface.mass() << "\n";
-    std::cout << "* ~ ~ * \n";
+
 
     // save after
     ahfinder.save("after");

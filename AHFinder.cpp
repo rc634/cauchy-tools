@@ -190,8 +190,15 @@ double AHFinder::area_flat() {
 }
 
 // irreducible horizon mass
-double AHFinder::mass() {
+double AHFinder::mass_irr() {
     return 0.25*sqrt(area()/(Params::pi));
+}
+
+// full horizon mass M^2 = M_irr^2 + J^2/(4*M_irr^2)
+double AHFinder::mass() {
+    double M_irr = mass_irr();
+    double J = J_H();
+    return sqrt(M_irr*M_irr + 0.25*J*J/M_irr/M_irr);
 }
 
 // J
@@ -199,21 +206,25 @@ double AHFinder::J_H() {
     double J = 0;
     for (size_t i = 0; i < num_points; ++i) {
         // calculate J_H, formula in notes/paper
-        J += 4. * Params::pi * 
+        J +=  0.5 * 
         ( 
-            f[i]*f[i]*dW_dR[i] + f[i]*W[i] 
-            - W[i]*d(f,i)*sin(sigma[i])*cos(sigma[i])
-            - sin(sigma[i])*sin(sigma[i])*d(f,i)*f[i]*f[i]*d(W,i)
+            f[i]*(W[i] + f[i]*dW_dR[i])*sin(sigma[i])
+            - d(f,i)*(W[i]*cos(sigma[i]) + sin(sigma[i])*d(W,i))
         ) 
-        * f[i] * sin(sigma[i]) * sin(sigma[i]) * ds;
+        * f[i] * sin(sigma[i]) * ds;
     }
     // factor of two for reflection symmetry
     return 2. * J;
 }
 
-// J
+// J/M, from 0 to M
 double AHFinder::a_H() {
     return J_H()/mass();
+}
+
+// J/M^2, from 0 to 1
+double AHFinder::chi_H() {
+    return a_H()/mass();
 }
 
 

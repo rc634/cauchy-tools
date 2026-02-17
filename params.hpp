@@ -10,9 +10,9 @@ namespace Params {
 
     // coords of x/y axes, may not be cartesian
     constexpr double XL = 0.;
-    constexpr double XU = 200.;
+    constexpr double XU = 10.;
     constexpr double YL = 0.;
-    constexpr double YU = 200.;
+    constexpr double YU = 10.;
 
     // courant friedrich lewis thingy 
     constexpr double CFL = 0.25; 
@@ -21,7 +21,7 @@ namespace Params {
     constexpr int AH_NPOINTS = 256; 
     constexpr int EX_NPOINTS = 2048;
     constexpr double RH = 2.;
-    constexpr double RX = 50.;
+    constexpr double RX = 6.;
 
     constexpr double pi = M_PI;
 
