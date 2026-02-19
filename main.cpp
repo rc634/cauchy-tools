@@ -22,7 +22,8 @@ int main() {
 
     // loads initial data files e.g. .dat
     DataLoader loader;
-    loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
+    // loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
+    loader.loadCSV(spacetime, "data/NakamuraYesHorizon.csv", "data/NakamuraNoHorizon.csv");
 
     // apparent horizon finder object
     AHFinder ahfinder(Params::AH_NPOINTS);
@@ -70,11 +71,12 @@ int main() {
     std::cout << "* ~ ~ * \n";
 
     // relaxation iterations for AH solver          
-    for (size_t i = 0; i < 2000001; i++)
+    for (size_t i = 0; i < 400001; i++)      
     {
+        ahfinder.refresh_Nakamura();
+        // ahfinder.refresh(spacetime);
         ahfinder.relax();
-        ahfinder.refresh(spacetime);
-        if (i%200000==0) {
+        if (i%40000==0) {
             // a breather step, we can do more expensice things here
             std::cout << " - iter : " << i << ", ";
             std::cout << " r ~ " << ahfinder.r() << ", ";

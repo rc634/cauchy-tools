@@ -68,6 +68,9 @@ public:
     void update(const Spacetime& spacetime);
     void relax();
     void refresh(const Spacetime& spacetime);
+    void refresh_pureBH();
+    void refresh_Nakamura();
+    double beta_external(double x, double y, double c, double e);
 
     void save(const std::string &filename);
 

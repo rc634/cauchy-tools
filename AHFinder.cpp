@@ -31,10 +31,10 @@ void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
         sigma[i] = (i + 1./2.) * ds;
         f[i] = f0;           // initial guess for horizon radius
         dfdt[i] = 0.;
-
-        // update interpolated values
-        // e.g. psi, dpsi_dR, dW_dR
-        refresh(spacetime); 
+        psi[i] = 0.;
+        dpsi_dR[i] = 0.;
+        W[i] = 0.;
+        dW_dR[i] = 0.;
 
     }
 
@@ -318,7 +318,7 @@ void AHFinder::refresh(const Spacetime& spacetime) {
     double df = 0., dpsi = 0., dW=0.;
     double test_bh_mass = 1.0;
     for (size_t i = 0; i < num_points; ++i) {
-        // numerical 
+        // for numerical spherical radius R deriv
         df = ds * f[i];
         // update psi with new coords f,s
         x = f[i] * sin(sigma[i]);
@@ -337,12 +337,145 @@ void AHFinder::refresh(const Spacetime& spacetime) {
         // set values for spheical radial deriv
         dpsi_dR[i]=dpsi/(2.*df);
         dW_dR[i]=dW/(2.*df);
+    }
+
+}
+
+// to be called after we update the surface
+// update external fields such as psi[f,s] 
+void AHFinder::refresh_pureBH() {
+    double test_bh_mass = 1.0;
+    for (size_t i = 0; i < num_points; ++i) {
+
+        // algebraic schwarzschild
+        psi[i] = 1. + test_bh_mass/f[i]/2.;
+        dpsi_dR[i] = - test_bh_mass/f[i]/f[i]/2.;
+        W[i] = 0.;
+        dW_dR[i] = 0.;
+    }
+
+}
+
+// to be called after we update the surface
+// update external fields such as psi[f,s] 
+void AHFinder::refresh_Nakamura() {
+    //
+    double x = 0., y = 0.;
+    double df = 0., dpsi = 0.;
+
+    // nakamura const
+    double M_N = 1.; // assumed implicitly for now
+    double M = 2. * M_N;
+    double e = 0.99;
+    double c = M * 0.4;
+    double a = c*sqrt(1-e*e);
+    double k = 1.5 * pow(c*e,-3);
+    double alpha = 6. / (5.*c*e) * log((1+e)/(1-e));
+    double M_0 = 2. + alpha;
+    double beta_internal = std::asinh(c*e/a); // internal beta
+    double pho = -1.5/(c*e);
+    // nakamura vars
+    double phiN = 0.;
+    double Kr = 0;
+    double Kz = 0.;
+    double beta = 0.;
+    // test
+    bool internal = false;
+
+
+    //
+    for (size_t i = 0; i < num_points; ++i) {
+        // numerical 
+        df = ds * f[i];
+        internal = false;
+
+
+        ////////////////////////////////
+        // R = f
+        x = f[i] * sin(sigma[i]);
+        y = f[i] * cos(sigma[i]);
+        if (x*x/a/a + y*y/c/c < 1.) {
+            beta = beta_internal;
+            internal = true;
+        }
+        else {
+            beta = beta_external(x,y,c,e);
+        }
+        // brrrrrrt!
+        Kr = k * x * (beta - sinh(beta)*cosh(beta)); 
+        Kz = 2. * k * y * (tanh(beta) - beta); 
+        phiN = pho*beta - 0.5*(x*Kr+y*Kz);
+        // output psi!
+        psi[i] = 1. - phiN;
+        // if (true) {
+        //     std::cout << "debugger psi : " << psi[i] 
+        //             << ", z : " << y
+        //             << ", r : " << x
+        //             << ", Kr : " << Kr
+        //             << ", Kz : " << Kz
+        //             << ", a : " << a
+        //             << ", beta : " << beta
+        //             << ", in : " << internal
+        //             << ", Kz : " << Kz
+        //             << ", tau : " << sigma[i]/(2.*M_PI) << "\n";
+        // }
+
+
+        ////////////////////////////
+        // R = f + df
+        x = (f[i] + df) * sin(sigma[i]);
+        y = (f[i] + df) * cos(sigma[i]);
+        if (x*x/a/a + y*y/c/c < 1.) {
+            beta = beta_internal;
+        }
+        else {
+            beta = beta_external(x,y,c,e);
+        }
+        // brrrrrrt!
+        Kr = k * x * (beta - sinh(beta)*cosh(beta)); 
+        Kz = 2. * k * y * (tanh(beta) - beta); 
+        phiN = pho*beta - 0.5*(x*Kr+y*Kz);
+        dpsi = 1.-phiN;
+
+
+        ///////////////////////////
+        // R = f - df
+        x = (f[i] - df) * sin(sigma[i]);
+        y = (f[i] - df) * cos(sigma[i]);
+        if (x*x/a/a + y*y/c/c < 1.) {
+            beta = beta_internal;
+        }
+        else {
+            beta = beta_external(x,y,c,e);
+        }
+        // brrrrrrt!
+        Kr = k * x * (beta - sinh(beta)*cosh(beta)); 
+        Kz = 2. * k * y * (tanh(beta) - beta); 
+        phiN = pho*beta - 0.5*(x*Kr+y*Kz);
+        dpsi -= 1.-phiN;
+
+        //////////////////////////////////
+        // set deriv
+        dpsi_dR[i]=dpsi/(2.*df);
+
+        // no rotation
+        dW_dR[i]=0.;
+        W[i] = 0.;
 
         // // algebraic schwarzschild
         // psi[i] = 1. + test_bh_mass/f[i]/2.;
         // dpsi_dR[i] = - test_bh_mass/f[i]/f[i]/2.;
     }
 
+}
+
+double AHFinder::beta_external(double x, double y, double c, double e) {
+    double A = x*x;
+    double B = x*x + y*y - c*c*e*e;
+    double C = -c*c*e*e;
+    // quadratic formula
+    double ss = (- B + sqrt(B*B - 4.*A*C))/(2.*A);
+    return std::asinh(sqrt(ss));
 }
 
 void AHFinder::relax() {
