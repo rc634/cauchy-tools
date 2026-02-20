@@ -1,4 +1,4 @@
-#include "AHFinder.hpp"
+#include "Shooter.hpp"
 #include "Spacetime.hpp"
 #include "params.hpp"
 #include <iostream>
@@ -6,9 +6,10 @@
 #include <fstream>
 #include <string>
 
-AHFinder::AHFinder(int npoints) {
+Shooter::Shooter(int npoints) {
     sigma.resize(npoints);
     f.resize(npoints);
+    g.resize(npoints);
     psi.resize(npoints);
     W.resize(npoints);
     dpsi_dR.resize(npoints);
@@ -23,13 +24,14 @@ AHFinder::AHFinder(int npoints) {
     dt = Params::CFL * ds * ds;
 }
 
-void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
+void Shooter::initialize(const double f0) {
     double x = 0., y = 0.;
     for (size_t i = 0; i < num_points; ++i) {
 
         // cell centred
         sigma[i] = (i + 1./2.) * ds;
         f[i] = f0;           // initial guess for horizon radius
+        g[i] = 0.; // g is f' 
         dfdt[i] = 0.;
         psi[i] = 0.;
         dpsi_dR[i] = 0.;
@@ -41,8 +43,56 @@ void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
     std::cout << " - setting f[i] = " << f0 << std::endl;
 }
 
+void Shooter::shoot(const Spacetime& spacetime) {
+    // numerical inits 
+    double F1 = 0., F2 = 0., F3 = 0., F4 = 0.;
+    double G1 = 0., G2 = 0., G3 = 0., G4 = 0.;
+    double f0 = 0., g0 = 0., sig0 = 0.;
+    double q = 0.; // RK4 steps
+    double N = 1.; // oscillations
+    for (size_t i = 0; i < num_points-1; ++i) {
+        // init
+        f0 = f[i];
+        g0 = g[i];
+        sig0 = sigma[i];
+
+        // step 1
+        q = 0.; // no step
+        F1 = - N * sqrt(1-f0*f0);//g0 + q * ds * G4;
+        G1 = DGDS(spacetime, f0, g0, ds*q+sig0);
+
+        // step 2
+        q = 0.5; // half step
+        F2 = - N * sqrt(1-pow(f0+q*ds*F1,2));//g0 + q * ds * G1;
+        G2 = DGDS(spacetime, f0+F1, g0+G1, ds*q+sig0);
+
+        // step 3
+        q = 0.5; // half step
+        F3 = - N * sqrt(1-pow(f0+q*ds*F2,2));//g0 + q * ds * G2;
+        G3 = DGDS(spacetime, f0+F2, g0+G2, ds*q+sig0);
+
+        // step 4
+        q = 1.; // full step
+        F4 = - N * sqrt(1-pow(f0+q*ds*F3,2));//g0 + q * ds * G3;
+        G4 = DGDS(spacetime, f0+F3, g0+G3, ds*q+sig0);
+
+        // cell centred
+        g[i+1] = (G1 + 2.*G2 + 2.*G3 + G4)/6.;
+        f[i+1] = (F1 + 2.*F2 + 2.*F3 + F4)/6.;
+    }
+}
+
+double Shooter::DGDS(const Spacetime& spacetime, const double F, const double G, const double TH) {
+    //numerical derivs
+    double PSIP = 0., PSI = 1.+1./F, DRPSI = -1./F/F;
+    double out = - (G*G*G/F/F + G) * (4.*PSIP/PSI + cos(TH)/sin(TH))
+                 + G*G*(3./F + 4.*DRPSI/PSI) + 2.*F
+                 + 4.*F*F*DRPSI/PSI;
+    return out;
+}
+
 // // 1st derivative // 4th order
-// double AHFinder::d(const std::vector<double> &field, int i) {
+// double Shooter::d(const std::vector<double> &field, int i) {
 //     // integer sample points
 //     int i1 = i-2;
 //     int i2 = i-1;
@@ -77,7 +127,7 @@ void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
 // }
 
 // 1st derivative
-double AHFinder::d(const std::vector<double> &field, int i) {
+double Shooter::d(const std::vector<double> &field, int i) {
     // integer sample points
     int i1 = i-1;
     int i2 = i;
@@ -100,7 +150,7 @@ double AHFinder::d(const std::vector<double> &field, int i) {
 }
 
 // // 2nd derivative - 4th order
-// double AHFinder::d2(const std::vector<double> &field, int i) {
+// double Shooter::d2(const std::vector<double> &field, int i) {
 //     // integer sample points
 //     int i1 = i-2;
 //     int i2 = i-1;
@@ -135,7 +185,7 @@ double AHFinder::d(const std::vector<double> &field, int i) {
 // }
 
 // 1st derivative
-double AHFinder::d2(const std::vector<double> &field, int i) {
+double Shooter::d2(const std::vector<double> &field, int i) {
     // integer sample points
     int i1 = i-1;
     int i2 = i;
@@ -160,14 +210,14 @@ double AHFinder::d2(const std::vector<double> &field, int i) {
 
 // area infinitessimal
 // inline this later?
-double AHFinder::dA(const int i) {
+double Shooter::dA(const int i) {
     return 2. * Params::pi * pow(psi[i],4) 
             * sqrt((f[i]*f[i]) + d(f,i)*d(f,i))
             * f[i] * sin(sigma[i]) * ds;
 }
 
 // proper area
-double AHFinder::area() {
+double Shooter::area() {
     double A = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         A += dA(i);
@@ -177,7 +227,7 @@ double AHFinder::area() {
 }
 
 // flat (conformal) area
-double AHFinder::area_flat() {
+double Shooter::area_flat() {
     double A = 0.;
     double dfds = 0.;
     double geom = 0.;
@@ -190,19 +240,19 @@ double AHFinder::area_flat() {
 }
 
 // irreducible horizon mass
-double AHFinder::mass_irr() {
+double Shooter::mass_irr() {
     return 0.25*sqrt(area()/(Params::pi));
 }
 
 // full horizon mass M^2 = M_irr^2 + J^2/(4*M_irr^2)
-double AHFinder::mass() {
+double Shooter::mass() {
     double M_irr = mass_irr();
     double J = J_H();
     return sqrt(M_irr*M_irr + 0.25*J*J/M_irr/M_irr);
 }
 
 // J
-double AHFinder::J_H() {
+double Shooter::J_H() {
     double J = 0;
     for (size_t i = 0; i < num_points; ++i) {
         // calculate J_H, formula in notes/paper
@@ -218,18 +268,18 @@ double AHFinder::J_H() {
 }
 
 // J/M, from 0 to M
-double AHFinder::a_H() {
+double Shooter::a_H() {
     return J_H()/mass();
 }
 
 // J/M^2, from 0 to 1
-double AHFinder::chi_H() {
+double Shooter::chi_H() {
     return a_H()/mass();
 }
 
 
 
-double AHFinder::mass_MS() {
+double Shooter::mass_MS() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -244,7 +294,7 @@ double AHFinder::mass_MS() {
     return B/A;
 }
 
-double AHFinder::mass_SC() {
+double Shooter::mass_SC() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -260,7 +310,7 @@ double AHFinder::mass_SC() {
 }
 
 
-double AHFinder::res() {
+double Shooter::res() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -274,7 +324,7 @@ double AHFinder::res() {
 }
 
 
-double AHFinder::psi_h() {
+double Shooter::psi_h() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -288,7 +338,7 @@ double AHFinder::psi_h() {
 }
 
 // average r
-double AHFinder::r() {
+double Shooter::r() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -301,19 +351,19 @@ double AHFinder::r() {
     return B/A;
 }
 
-double AHFinder::eccentricity() {
+double Shooter::eccentricity() {
     return f[0]/f[num_points-1];
 }
 
 
-void AHFinder::update(const Spacetime& spacetime) {
+void Shooter::update(const Spacetime& spacetime) {
     // Placeholder for expansion/minimization logic
     // code here 
 }
 
 // to be called after we update the surface
 // update external fields such as psi[f,s] 
-void AHFinder::refresh(const Spacetime& spacetime) {
+void Shooter::refresh(const Spacetime& spacetime) {
     double x = 0., y = 0.;
     double df = 0., dpsi = 0., dW=0.;
     double test_bh_mass = 1.0;
@@ -343,7 +393,7 @@ void AHFinder::refresh(const Spacetime& spacetime) {
 
 // to be called after we update the surface
 // update external fields such as psi[f,s] 
-void AHFinder::refresh_pureBH() {
+void Shooter::refresh_pureBH() {
     double test_bh_mass = 1.0;
     for (size_t i = 0; i < num_points; ++i) {
 
@@ -358,7 +408,7 @@ void AHFinder::refresh_pureBH() {
 
 // to be called after we update the surface
 // update external fields such as psi[f,s] 
-void AHFinder::refresh_Nakamura() {
+void Shooter::refresh_Nakamura() {
     //
     double x = 0., y = 0.;
     double df = 0., dpsi = 0.;
@@ -367,7 +417,7 @@ void AHFinder::refresh_Nakamura() {
     double M_N = 1.; // assumed implicitly for now
     double M = 2. * M_N;
     double e = 0.99;
-    double c = M * 0.65;
+    double c = M * 0.4;
     double a = c*sqrt(1-e*e);
     double k = 1.5 * pow(c*e,-3);
     double alpha = 6. / (5.*c*e) * log((1+e)/(1-e));
@@ -469,7 +519,7 @@ void AHFinder::refresh_Nakamura() {
 
 }
 
-double AHFinder::beta_external(double x, double y, double c, double e) {
+double Shooter::beta_external(double x, double y, double c, double e) {
     double A = x*x;
     double B = x*x + y*y - c*c*e*e;
     double C = -c*c*e*e;
@@ -478,7 +528,7 @@ double AHFinder::beta_external(double x, double y, double c, double e) {
     return std::asinh(sqrt(ss));
 }
 
-void AHFinder::relax() {
+void Shooter::relax() {
     // Poisson solver towards correct surface
     double term1 = 0.;
     double term2 = 0.;
@@ -504,10 +554,9 @@ void AHFinder::relax() {
 }
 
 
-
 // stuff 
 
-void AHFinder::save(const std::string &filename) {
+void Shooter::save(const std::string &filename) {
     std::ofstream outFile("data/" + filename + ".dat");
     if (!outFile.is_open()) {
         throw std::runtime_error("Could not open file for writing: " + filename);
@@ -530,8 +579,8 @@ void AHFinder::save(const std::string &filename) {
     outFile.close();
 }
 
-void AHFinder::hello() const {
-    std::cout << "Hello from AHFinder!\n"
+void Shooter::hello() const {
+    std::cout << "Hello from Shooter!\n"
               << " - Number of horizon points = "
               << num_points << std::endl;
 }

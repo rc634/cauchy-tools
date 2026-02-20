@@ -8,6 +8,7 @@ data = np.loadtxt("../data/after.dat", delimiter=',')
 r = data[:, 0]
 theta = data[:, 1]   # assumed 0 → pi/2
 
+
 # # ---- Extend solution symmetrically ----
 # # Mirror across pi/2  → gives 0 → pi
 # theta_half = np.concatenate([theta, np.pi - theta[::-1]])
@@ -25,21 +26,25 @@ fig, ax = plt.subplots(
 
 # ax.plot(theta_full, r_full, color='black', linewidth=2)
 # ax.plot(theta_full, r_full, color='black', linewidth=2)
-ax.plot(5*theta, r/r, color='darkgrey', linewidth=1)
-ax.plot(5*theta, 3*r/r, color='lightgrey', linewidth=0.5)
+ax.plot(5*theta, r-r, color='darkgrey', linewidth=1)
+ax.plot(5*theta, r/r, color='lightgrey', linewidth=0.5)
 # ax.plot(5*theta, 10*r/r, color='darkgrey', linewidth=1)
 # ax.plot(5*theta, 30*r/r, color='lightgrey', linewidth=0.5)
 # ax.plot(5*theta,100*r/r, color='darkgrey', linewidth=1)
-ax.plot(theta, r, color='black', linewidth=1)
-# ax.plot(theta + np.pi/2., r[::-1], color='black', linewidth=1)
-# ax.plot(theta + np.pi, r, color='black', linewidth=1)
-# ax.plot(theta + 3.*np.pi/2., r[::-1], color='black', linewidth=1)
+ax.plot(-theta + np.pi/2., r, color='black', linewidth=1)
+ax.plot(-theta, r[::-1], color='black', linewidth=1)
+ax.plot(-theta - np.pi/2., r, color='black', linewidth=1)
+ax.plot(-theta - np.pi, r[::-1], color='black', linewidth=1)
 
 # Minimal styling
 ax.set_xticks([])
 ax.set_yticks([])
 ax.grid(False)
 ax.spines['polar'].set_visible(False)
+
+print(ax.get_xlim())
+print(ax.get_ylim())
+
 
 plt.tight_layout()
 plt.show()

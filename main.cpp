@@ -4,6 +4,7 @@
 #include "Spacetime.hpp"
 #include "DataLoader.hpp"
 #include "AHFinder.hpp"
+#include "Shooter.hpp"
 
 int main() {
 
@@ -31,6 +32,9 @@ int main() {
     // pure integrating surface, too heavy for relaxation!
     AHFinder surface(Params::EX_NPOINTS);
 
+    // RK4 shooter
+    Shooter shooter(Params::SH_NPOINTS);
+
    
     
     //////////////////////////
@@ -39,6 +43,7 @@ int main() {
     loader.hello();
     ahfinder.hello();
     surface.hello();
+    shooter.hello();
 
     ///////////////////////////
     // Run Code
@@ -58,6 +63,7 @@ int main() {
     // data
     ahfinder.initialize(spacetime,r_horizon);
     surface.initialize(spacetime,r_extraction);
+    shooter.initialize(r_horizon);
     ahfinder.update(spacetime);
     ahfinder.save("before");
 
@@ -71,12 +77,12 @@ int main() {
     std::cout << "* ~ ~ * \n";
 
     // relaxation iterations for AH solver          
-    for (size_t i = 0; i < 400001; i++)      
+    for (size_t i = 0; i < 200001; i++)      
     {
         ahfinder.refresh_Nakamura();
         // ahfinder.refresh(spacetime);
         ahfinder.relax();
-        if (i%40000==0) {
+        if (i%20000==0) {
             // a breather step, we can do more expensice things here
             std::cout << " - iter : " << i << ", ";
             std::cout << " r ~ " << ahfinder.r() << ", ";
@@ -105,6 +111,12 @@ int main() {
 
     // save after
     ahfinder.save("after");
+
+
+    // shooter 
+    shooter.shoot(spacetime);
+    shooter.save("pewpew");
+
     
 
     ///////////////////////////

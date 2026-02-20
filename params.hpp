@@ -15,14 +15,18 @@ namespace Params {
     constexpr double YU = 5.;
 
     // courant friedrich lewis thingy 
-    constexpr double CFL = 0.125; 
+    constexpr double CFL = 0.25; 
 
-    // apparent horizon sample points
+    // sample points
     constexpr int AH_NPOINTS = 64; 
     constexpr int EX_NPOINTS = 2048;
+    constexpr int SH_NPOINTS = 400;
+
+    // initial radii
     constexpr double RH = 0.5;
     constexpr double RX = 6.;
 
+    // consts 
     constexpr double pi = M_PI;
 
     // surface resolution
