@@ -43,13 +43,103 @@ void Shooter::initialize(const double f0) {
     std::cout << " - setting f[i] = " << f0 << std::endl;
 }
 
-void Shooter::shoot(const Spacetime& spacetime) {
+void Shooter::interval_bisection(const Spacetime& spacetime) {
+    int iter_a = 501;
+    int iter_b = 51;
+    double rat = 0.98;
+    double fb = rmax; //large radius
+    double fa = rmax*rat; //small radius
+    double fc=0., gc=0.; // intermediate
+
+    // // dumb tester
+    // for (size_t k = 0; k < 100; k++)
+    // {
+    //     fc = (5.-0.7)/24.*k + 0.7; // upper limit finder
+    //     shoot(spacetime, fc);
+    //     gc = g[num_points-1];
+
+    //     std::cout << " Shooting k : " << k << ", "
+    //               << " OOB : " << OOB << ", "
+    //               << "f0 : " << f[0] << ", "
+    //               << "g_end : " << g[num_points-1] << "\n"; 
+    // }
+
+    // find the sensible range for bisection
+    for (size_t i = 0; i < iter_a; i++)
+    {
+        fc = fb; // upper limit finder
+        shoot(spacetime, fc);
+        gc = g[num_points-1];
+
+        if (OOB || gc > g_END) { // decrease the upper fb
+            fb = rat*fb;
+        }
+        else { // undo last step, create sensible range {fa,fb}
+            fa = fb;
+            fb = fb/rat;
+            break;
+        }
+
+        // std::cout << " Shooting i : " << i << ", "
+        //           << " OOB : " << OOB << ", "
+        //           << " gE : " << g_END << ", "
+        //           << "f0 : " << f[0] << ", "
+        //           << "g_end : " << g[num_points-1] << "\n"; 
+    }
+
+    // interval bisection on sensible range
+    for (size_t j = 0; j < iter_b; j++)
+    {
+        fc = 0.5*(fa+fb); // interval bisection
+        // fc = 0.4848 + 0.000001*i; // manual scan
+        shoot(spacetime, fc);
+        gc = g[num_points-1];
+
+        if (gc > g_END) {
+            fb = fc;
+        }
+        else {
+            fa = fc;
+        }
+
+        // std::cout << " - * - Shoot iter j : " << j << ", "
+        //           << " OOB : " << OOB << ", "
+        //           << " gE : " << g_END << ", "
+        //           << "f0 : " << f[0] << ", "
+        //           << "g_end : " << g[num_points-1] << "\n"; 
+    }
+    shoot(spacetime, fc);
+}
+
+void Shooter::shoot(const Spacetime& spacetime, double rH0) {
     // numerical inits 
-    double F1 = 0., F2 = 0., F3 = 0., F4 = 0.;
-    double G1 = 0., G2 = 0., G3 = 0., G4 = 0.;
-    double f0 = 0., g0 = 0., sig0 = 0.;
-    double q = 0.; // RK4 steps
-    double N = 1.; // oscillations
+    // gradients at rk4 sub-steps
+    double F1 = 0., F2 = 0., F3 = 0., F0 = 0.;
+    double G1 = 0., G2 = 0., G3 = 0., G0 = 0.;
+    // values at rk4 sub-steps
+    double f1 = 0., f2 = 0., f3 = 0., f0 = 0.;
+    double g1 = 0., g2 = 0., g3 = 0., g0 = 0.;
+    // initial values for rk4 steps
+    double sig1 = 0., sig2 = 0., sig3 = 0., sig0 = 0.;
+    // RK4 step width
+    double q = 0.; 
+    // start not out of bounds
+    OOB = false; 
+
+    // * ---------- start ------------------- *
+    // small angle approx 
+    // initial g value helper 
+    double x0 = f[0] * sin(sigma[0]);
+    double y0 = f[0] * cos(sigma[0]);
+    double dpsidR0 = spacetime.get_ddy_interp(spacetime.psi,x0,y0) * cos(sigma[0]) +
+                     spacetime.get_ddx_interp(spacetime.psi,x0,y0) * sin(sigma[0]);
+    double psi0 = spacetime.get_val_interp(spacetime.psi,x0,y0);
+    // initialise, use f ~ f_0 + f'' * theta^2 / 2 or g ~ f'' * theta around pole
+    f[0] = rH0;
+    g[0] = (rH0 + 2. * rH0 * rH0 * dpsidR0 / psi0) * sigma[0];
+    // * ----------- end -------------- *
+
+    // rk4 integration
     for (size_t i = 0; i < num_points-1; ++i) {
         // init
         f0 = f[i];
@@ -58,33 +148,81 @@ void Shooter::shoot(const Spacetime& spacetime) {
 
         // step 1
         q = 0.; // no step
-        F1 = - N * sqrt(1-f0*f0);//g0 + q * ds * G4;
-        G1 = DGDS(spacetime, f0, g0, ds*q+sig0);
+        F0 = g0;
+        G0 = DGDS(spacetime, f0, g0, sig0);
 
         // step 2
-        q = 0.5; // half step
-        F2 = - N * sqrt(1-pow(f0+q*ds*F1,2));//g0 + q * ds * G1;
-        G2 = DGDS(spacetime, f0+F1, g0+G1, ds*q+sig0);
+        q = 0.5 * ds; // half step
+        f1 = f0 + q*F0;
+        g1 = g0 + q*G0;
+        sig1 = sig0 + q*ds;
+        F1 = g1;
+        G1 = DGDS(spacetime, f1, g1, sig1);
 
         // step 3
-        q = 0.5; // half step
-        F3 = - N * sqrt(1-pow(f0+q*ds*F2,2));//g0 + q * ds * G2;
-        G3 = DGDS(spacetime, f0+F2, g0+G2, ds*q+sig0);
+        q = 0.5 * ds; // half step
+        f2 = f0 + q*F1;
+        g2 = g0 + q*G1;
+        sig2 = sig0 + q*ds;
+        F2 = g2;
+        G2 = DGDS(spacetime, f2, g2, sig2);
 
         // step 4
-        q = 1.; // full step
-        F4 = - N * sqrt(1-pow(f0+q*ds*F3,2));//g0 + q * ds * G3;
-        G4 = DGDS(spacetime, f0+F3, g0+G3, ds*q+sig0);
+        q = 1.0 * ds; // full step
+        f3 = f0 + q*F2;
+        g3 = g0 + q*G2;
+        sig3 = sig0 + q*ds;
+        F3 = g3;
+        G3 = DGDS(spacetime, f3, g3, sig3);
 
         // cell centred
-        g[i+1] = (G1 + 2.*G2 + 2.*G3 + G4)/6.;
-        f[i+1] = (F1 + 2.*F2 + 2.*F3 + F4)/6.;
+        f[i+1] = f[i] + (F0 + 2.*F1 + 2.*F2 + F3) * ds / 6.;
+        g[i+1] = g[i] + (G0 + 2.*G1 + 2.*G2 + G3) * ds / 6.;
+
+        // limit max value
+        f[i+1] = std::min(f[i+1],rmax);
+        // limit max value
+        f[i+1] = std::max(f[i+1],rmin);
+
+        // set out of bounds
+        if (f[i+1] >= rmax) {
+            OOB = true;
+        }
     }
+
+    // * ---------- start ------------------- *
+    // large angle approx 
+    // initial g value helper 
+    double xE = f[num_points-1] * sin(sigma[num_points-1]);
+    double yE = f[num_points-1] * cos(sigma[num_points-1]);
+    double dpsidRE = spacetime.get_ddy_interp(spacetime.psi,xE,yE) * cos(sigma[num_points-1]) +
+                     spacetime.get_ddx_interp(spacetime.psi,xE,yE) * sin(sigma[num_points-1]);
+    double psiE = spacetime.get_val_interp(spacetime.psi,xE,yE);
+    // initialise, use f ~ f_e + f'' * eps^2 / 2 or g ~ f'' * eps around equator
+    double fend = f[num_points-1];
+    double gend = (fend + 2. * fend * fend * dpsidRE / psiE) * sigma[0];
+    g_END = gend;
+    // * ----------- end -------------- *
+
 }
 
 double Shooter::DGDS(const Spacetime& spacetime, const double F, const double G, const double TH) {
-    //numerical derivs
-    double PSIP = 0., PSI = 1.+1./F, DRPSI = -1./F/F;
+    // ~ right hand side for g (which = f')
+
+    // test black hole 
+    double M = 1.;
+    double PSIP = 0., PSI = 1.+M/(2.*F), DRPSI = -M/(F*F*2.);
+
+    // numerical selection point for derivs
+    double x = F * sin(TH);
+    double y = F * cos(TH);
+    double ddx = spacetime.get_ddx_interp(spacetime.psi,x,y);
+    double ddy = spacetime.get_ddy_interp(spacetime.psi,x,y);
+    DRPSI = ddx * sin(TH) + ddy * cos(TH);
+    PSIP = ddx * cos(TH) - ddy * sin(TH);
+    PSI = spacetime.get_val_interp(spacetime.psi,x,y);
+
+    // read in data 
     double out = - (G*G*G/F/F + G) * (4.*PSIP/PSI + cos(TH)/sin(TH))
                  + G*G*(3./F + 4.*DRPSI/PSI) + 2.*F
                  + 4.*F*F*DRPSI/PSI;
@@ -352,7 +490,15 @@ double Shooter::r() {
 }
 
 double Shooter::eccentricity() {
-    return f[0]/f[num_points-1];
+    double f0 = f[0];
+    double fE = f[num_points-1];
+    if (fE==f0) return 0;
+    else if (fE>f0) {
+        return sqrt(1-pow(f0/fE,2));
+    }
+    else {
+        return sqrt(1-pow(fE/f0,2));
+    }
 }
 
 

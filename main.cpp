@@ -5,12 +5,14 @@
 #include "DataLoader.hpp"
 #include "AHFinder.hpp"
 #include "Shooter.hpp"
+#include "SpectralSolver.hpp"
 
 int main() {
 
     ///////////////////////////
     // Hello World!!
     
+    std::cout << "\n";
     std::cout << "*========================*\n";
     std::cout << "| Starting Cauchy Tools! |\n";
     std::cout << "*========================*\n\n";
@@ -20,11 +22,15 @@ int main() {
 
     // spacetime holds 2d fields and 2d manifold information
     Spacetime spacetime;
+    // spacetime.set_data_nakamura_prolate();
+    // spacetime.set_data_nakamura_oblate();
+    spacetime.set_data_BH();
 
     // loads initial data files e.g. .dat
     DataLoader loader;
-    // loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
-    loader.loadCSV(spacetime, "data/NakamuraYesHorizon.csv", "data/NakamuraNoHorizon.csv");
+
+    // // loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
+    // loader.loadCSV(spacetime, "data/NakamuraYesHorizon.csv", "data/NakamuraNoHorizon.csv");
 
     // apparent horizon finder object
     AHFinder ahfinder(Params::AH_NPOINTS);
@@ -50,7 +56,7 @@ int main() {
     
     std::cout << "\n";
     std::cout << "*======================*\n";
-    std::cout << "| Finding Horizon <> ! |\n";
+    std::cout << "| Test Surface <> ! |\n";
     std::cout << "*======================*\n\n";
 
     //////////////////////
@@ -64,58 +70,88 @@ int main() {
     ahfinder.initialize(spacetime,r_horizon);
     surface.initialize(spacetime,r_extraction);
     shooter.initialize(r_horizon);
-    ahfinder.update(spacetime);
     ahfinder.save("before");
 
-
+    /////////
     // initial output from surface 
-    std::cout << "Surface Area = " << surface.area_flat() << "\n";
-    std::cout << "Surface psi = " << surface.psi_h() << "\n";
-    std::cout << "Surface Misner-Sharp Mass = " << surface.mass_MS() << "\n";
-    std::cout << "Surface Schwarzschild Mass = " << surface.mass_SC() << "\n";
-    std::cout << "Surface Hawking Mass = " << surface.mass() << "\n";
-    std::cout << "* ~ ~ * \n";
+    surface.refresh(spacetime);
+    // output from AHFinder
+    std::cout << "\n* ============ Surface ============= *\n";
+    std::cout << "| Surf R0 = " << surface.f[0] << "\n";
+    std::cout << "| Surf RE = " << surface.f[ahfinder.num_points-1] << "\n";
+    std::cout << "| Surf Area = " << surface.area() << "\n";
+    std::cout << "| Surf Irreducible Mass = " << surface.mass_irr() << "\n";
+    std::cout << "| Surf Radius = " << surface.r() << "\n";
+    std::cout << "| Surf Eccentricity = " << surface.eccentricity() << "\n";
+    std::cout << "| Surf Spin = " << surface.a_H() << "\n";
+    std::cout << "| Surf Dimensionless Spin = " << surface.chi_H() << "\n";
+    std::cout << "* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ * \n";
 
+
+    std::cout << "\n";
+    std::cout << "*======================*\n";
+    std::cout << "| Relaxation Method <> ! |\n";
+    std::cout << "*======================*\n\n";
+
+    ///////////////////////
     // relaxation iterations for AH solver          
-    for (size_t i = 0; i < 200001; i++)      
+    for (size_t i = 0; i < 1000001; i++)      
     {
-        ahfinder.refresh_Nakamura();
-        // ahfinder.refresh(spacetime);
+        // ahfinder.refresh_Nakamura();
+        ahfinder.refresh(spacetime);
         ahfinder.relax();
-        if (i%20000==0) {
+        if (i%100000==0) {
             // a breather step, we can do more expensice things here
-            std::cout << " - iter : " << i << ", ";
+            std::cout << " - * - Relax iter : " << i << ", ";
             std::cout << " r ~ " << ahfinder.r() << ", ";
             std::cout << " A ~ " << ahfinder.area() << ", ";
             std::cout << " psi ~ " << ahfinder.psi_h() << ", ";
             std::cout << " M ~ " << ahfinder.mass() << ", ";
             std::cout << " e ~ " << ahfinder.eccentricity() << ", ";
             std::cout << " res ~ " << ahfinder.res() << "\n";
-            std::cout << " * \n";
         }
     }
 
-    // initial output from AHFinder
-    std::cout << "Horizon Area = " << ahfinder.area() << "\n";
-    std::cout << "Horizon Irreducible Mass = " << ahfinder.mass_irr() << "\n";
-    std::cout << "Horizon Mass = " << ahfinder.mass() << "\n";
-    std::cout << "Horizon Spin = " << surface.a_H() << "\n";
-    std::cout << "Horizon Dimensionless Spin = " << surface.chi_H() << "\n";
-    std::cout << "Horizon Psi = " << ahfinder.psi_h() << "\n";
-    std::cout << "Horizon Radius = " << ahfinder.r() << "\n";
-    std::cout << "Horizon Res = " << ahfinder.res() << "\n";
-    std::cout << "Horizon Eccentricity ~ " << ahfinder.eccentricity() << "\n";
-    std::cout << "* ~ ~ * \n";
+    // output from AHFinder
+    std::cout << "\n* ============ A H Finder ============= *\n";
+    std::cout << "| Horizon R0 = " << ahfinder.f[0] << "\n";
+    std::cout << "| Horizon RE = " << ahfinder.f[ahfinder.num_points-1] << "\n";
+    std::cout << "| Horizon Area = " << ahfinder.area() << "\n";
+    std::cout << "| Horizon Irreducible Mass = " << ahfinder.mass_irr() << "\n";
+    std::cout << "| Horizon Radius = " << ahfinder.r() << "\n";
+    std::cout << "| Horizon Eccentricity = " << ahfinder.eccentricity() << "\n";
+    std::cout << "| Horizon Spin = " << ahfinder.a_H() << "\n";
+    std::cout << "| Horizon Dimensionless Spin = " << ahfinder.chi_H() << "\n";
+    std::cout << "* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ * \n";
+
+    // save relaxation solution
+    ahfinder.save("relaxed");
 
 
+    std::cout << "\n";
+    std::cout << "*======================*\n";
+    std::cout << "| Shooting Method <> ! |\n";
+    std::cout << "*======================*\n\n";
 
-    // save after
-    ahfinder.save("after");
-
-
+    /////////////////
     // shooter 
-    shooter.shoot(spacetime);
-    shooter.save("pewpew");
+    shooter.interval_bisection(spacetime);
+    shooter.refresh(spacetime);
+
+    // output from shooter
+    std::cout << "\n* ============ Shooter ================ *\n";
+    std::cout << "| Horizon R0 = " << shooter.f[0] << "\n";
+    std::cout << "| Horizon RE = " << shooter.f[shooter.num_points-1] << "\n";
+    std::cout << "| Horizon Area = " << shooter.area() << "\n";
+    std::cout << "| Horizon Irreducible Mass = " << shooter.mass_irr() << "\n";
+    std::cout << "| Horizon Radius = " << shooter.r() << "\n";
+    std::cout << "| Horizon Eccentricity = " << shooter.eccentricity() << "\n";
+    std::cout << "| Horizon Spin = " << shooter.a_H() << "\n";
+    std::cout << "| Horizon Dimensionless Spin = " << shooter.chi_H() << "\n";
+    std::cout << "* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ * \n";
+
+    // save shooting solution
+    shooter.save("shot");
 
     
 

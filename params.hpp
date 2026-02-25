@@ -5,26 +5,26 @@
 
 namespace Params {
 
-    constexpr int NX = 1024;
-    constexpr int NY = 1024;
+    constexpr int NX = 10000;
+    constexpr int NY = 10000;
 
     // coords of x/y axes, may not be cartesian
     constexpr double XL = 0.;
-    constexpr double XU = 5.;
+    constexpr double XU = 12.;
     constexpr double YL = 0.;
-    constexpr double YU = 5.;
+    constexpr double YU = 12.;
 
     // courant friedrich lewis thingy 
     constexpr double CFL = 0.25; 
 
     // sample points
-    constexpr int AH_NPOINTS = 64; 
+    constexpr int AH_NPOINTS = 128; 
     constexpr int EX_NPOINTS = 2048;
-    constexpr int SH_NPOINTS = 400;
+    constexpr int SH_NPOINTS = 40000;
 
     // initial radii
-    constexpr double RH = 0.5;
-    constexpr double RX = 6.;
+    constexpr double RH = 5.;
+    constexpr double RX = 5.;
 
     // consts 
     constexpr double pi = M_PI;

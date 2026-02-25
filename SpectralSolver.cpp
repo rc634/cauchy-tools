@@ -1,4 +1,4 @@
-#include "AHFinder.hpp"
+#include "SpectralSolver.hpp"
 #include "Spacetime.hpp"
 #include "params.hpp"
 #include <iostream>
@@ -6,7 +6,7 @@
 #include <fstream>
 #include <string>
 
-AHFinder::AHFinder(int npoints) {
+SpectralSolver::SpectralSolver(int npoints) {
     sigma.resize(npoints);
     f.resize(npoints);
     psi.resize(npoints);
@@ -23,7 +23,7 @@ AHFinder::AHFinder(int npoints) {
     dt = Params::CFL * ds * ds;
 }
 
-void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
+void SpectralSolver::initialize(const Spacetime& spacetime, const double f0) {
     double x = 0., y = 0.;
     for (size_t i = 0; i < num_points; ++i) {
 
@@ -42,7 +42,7 @@ void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
 }
 
 // // 1st derivative // 4th order
-// double AHFinder::d(const std::vector<double> &field, int i) {
+// double SpectralSolver::d(const std::vector<double> &field, int i) {
 //     // integer sample points
 //     int i1 = i-2;
 //     int i2 = i-1;
@@ -77,7 +77,7 @@ void AHFinder::initialize(const Spacetime& spacetime, const double f0) {
 // }
 
 // 1st derivative
-double AHFinder::d(const std::vector<double> &field, int i) {
+double SpectralSolver::d(const std::vector<double> &field, int i) {
     // integer sample points
     int i1 = i-1;
     int i2 = i;
@@ -100,7 +100,7 @@ double AHFinder::d(const std::vector<double> &field, int i) {
 }
 
 // // 2nd derivative - 4th order
-// double AHFinder::d2(const std::vector<double> &field, int i) {
+// double SpectralSolver::d2(const std::vector<double> &field, int i) {
 //     // integer sample points
 //     int i1 = i-2;
 //     int i2 = i-1;
@@ -135,7 +135,7 @@ double AHFinder::d(const std::vector<double> &field, int i) {
 // }
 
 // 1st derivative
-double AHFinder::d2(const std::vector<double> &field, int i) {
+double SpectralSolver::d2(const std::vector<double> &field, int i) {
     // integer sample points
     int i1 = i-1;
     int i2 = i;
@@ -160,14 +160,14 @@ double AHFinder::d2(const std::vector<double> &field, int i) {
 
 // area infinitessimal
 // inline this later?
-double AHFinder::dA(const int i) {
+double SpectralSolver::dA(const int i) {
     return 2. * Params::pi * pow(psi[i],4) 
             * sqrt((f[i]*f[i]) + d(f,i)*d(f,i))
             * f[i] * sin(sigma[i]) * ds;
 }
 
 // proper area
-double AHFinder::area() {
+double SpectralSolver::area() {
     double A = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         A += dA(i);
@@ -177,7 +177,7 @@ double AHFinder::area() {
 }
 
 // flat (conformal) area
-double AHFinder::area_flat() {
+double SpectralSolver::area_flat() {
     double A = 0.;
     double dfds = 0.;
     double geom = 0.;
@@ -190,19 +190,19 @@ double AHFinder::area_flat() {
 }
 
 // irreducible horizon mass
-double AHFinder::mass_irr() {
+double SpectralSolver::mass_irr() {
     return 0.25*sqrt(area()/(Params::pi));
 }
 
 // full horizon mass M^2 = M_irr^2 + J^2/(4*M_irr^2)
-double AHFinder::mass() {
+double SpectralSolver::mass() {
     double M_irr = mass_irr();
     double J = J_H();
     return sqrt(M_irr*M_irr + 0.25*J*J/M_irr/M_irr);
 }
 
 // J
-double AHFinder::J_H() {
+double SpectralSolver::J_H() {
     double J = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         // calculate J_H, formula in notes/paper
@@ -218,18 +218,18 @@ double AHFinder::J_H() {
 }
 
 // J/M, from 0 to M
-double AHFinder::a_H() {
+double SpectralSolver::a_H() {
     return J_H()/mass();
 }
 
 // J/M^2, from 0 to 1
-double AHFinder::chi_H() {
+double SpectralSolver::chi_H() {
     return a_H()/mass();
 }
 
 
 
-double AHFinder::mass_MS() {
+double SpectralSolver::mass_MS() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -244,7 +244,7 @@ double AHFinder::mass_MS() {
     return B/A;
 }
 
-double AHFinder::mass_SC() {
+double SpectralSolver::mass_SC() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -260,7 +260,7 @@ double AHFinder::mass_SC() {
 }
 
 
-double AHFinder::res() {
+double SpectralSolver::res() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -274,7 +274,7 @@ double AHFinder::res() {
 }
 
 
-double AHFinder::psi_h() {
+double SpectralSolver::psi_h() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -288,7 +288,7 @@ double AHFinder::psi_h() {
 }
 
 // average r
-double AHFinder::r() {
+double SpectralSolver::r() {
     double A = 0.;
     double B = 0.;
     double integrand = 0.;
@@ -301,7 +301,7 @@ double AHFinder::r() {
     return B/A;
 }
 
-double AHFinder::eccentricity() {
+double SpectralSolver::eccentricity() {
     double f0 = f[0];
     double fE = f[num_points-1];
     if (fE==f0) return 0;
@@ -315,7 +315,7 @@ double AHFinder::eccentricity() {
 
 // to be called after we update the surface
 // update external fields such as psi[f,s] 
-void AHFinder::refresh(const Spacetime& spacetime) {
+void SpectralSolver::refresh(const Spacetime& spacetime) {
     double x = 0., y = 0.;
     double df = 0., dpsi = 0., dW=0.;
     double test_bh_mass = 1.0;
@@ -345,7 +345,7 @@ void AHFinder::refresh(const Spacetime& spacetime) {
 
 // to be called after we update the surface
 // update external fields such as psi[f,s] 
-void AHFinder::refresh_pureBH() {
+void SpectralSolver::refresh_pureBH() {
     double test_bh_mass = 1.0;
     for (size_t i = 0; i < num_points; ++i) {
 
@@ -360,7 +360,7 @@ void AHFinder::refresh_pureBH() {
 
 // to be called after we update the surface
 // update external fields such as psi[f,s] 
-void AHFinder::refresh_Nakamura() {
+void SpectralSolver::refresh_Nakamura() {
     //
     double x = 0., y = 0.;
     double df = 0., dpsi = 0.;
@@ -471,7 +471,7 @@ void AHFinder::refresh_Nakamura() {
 
 }
 
-double AHFinder::beta_external(double x, double y, double c, double e) {
+double SpectralSolver::beta_external(double x, double y, double c, double e) {
     double A = x*x;
     double B = x*x + y*y - c*c*e*e;
     double C = -c*c*e*e;
@@ -480,7 +480,7 @@ double AHFinder::beta_external(double x, double y, double c, double e) {
     return std::asinh(sqrt(ss));
 }
 
-void AHFinder::relax() {
+void SpectralSolver::relax() {
     // Poisson solver towards correct surface
     double term1 = 0.;
     double term2 = 0.;
@@ -509,7 +509,7 @@ void AHFinder::relax() {
 
 // stuff 
 
-void AHFinder::save(const std::string &filename) {
+void SpectralSolver::save(const std::string &filename) {
     std::ofstream outFile("data/" + filename + ".dat");
     if (!outFile.is_open()) {
         throw std::runtime_error("Could not open file for writing: " + filename);
@@ -532,8 +532,8 @@ void AHFinder::save(const std::string &filename) {
     outFile.close();
 }
 
-void AHFinder::hello() const {
-    std::cout << "Hello from AHFinder!\n"
+void SpectralSolver::hello() const {
+    std::cout << "Hello from SpectralSolver!\n"
               << " - Number of horizon points = "
               << num_points << std::endl;
 }

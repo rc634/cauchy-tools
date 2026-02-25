@@ -22,10 +22,18 @@ public:
     double dt; // relaxation time stepper
     double ds; // delta parameter/angle
 
+    // limits
+    double rmax = 5.;
+    double rmin = 10e-20;
+    bool OOB = false; // out of bounds for shooter!
+    double g_END = 0.; // last g value from pi/2 - epsilon
+
     Shooter(int npoints);
 
+    // high level function that calls many shoots
+    void interval_bisection(const Spacetime& spacetime);
     // shoot !
-    void shoot(const Spacetime& spacetime);
+    void shoot(const Spacetime& spacetime, double rH0);
     // rhs for shooter
     double DGDS(const Spacetime& spacetime, const double F, const double G, const double TH);
 
