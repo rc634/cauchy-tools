@@ -1,15 +1,16 @@
-#ifndef AHFINDER_HPP
-#define AHFINDER_HPP
+#ifndef SPECTRALSOLVER_HPP
+#define SPECTRALSOLVER_HPP
 
 #include <vector>
 
 class Spacetime;
 
-class AHFinder {
+class SpectralSolver {
 public:
     // 1D horizon representation
     std::vector<double> sigma;     // parameter / angular coordinate
     std::vector<double> f;         // horizon radius
+    std::vector<double> dfds;         // legendre calculated deriv
     std::vector<double> W;         // curvature
     std::vector<double> psi; // psi evaluated on horizon
     std::vector<double> dpsi_dR; // spherical radial derivative (not cylindrical radius)
@@ -18,10 +19,19 @@ public:
 
     // points 
     int num_points;
+    int N; // number of overtones
+    std::vector<double> coeff; // basis expansion coefficients
+    std::vector<double> J; // jacobean for basis coeffs
     double dt; // relaxation time stepper
     double ds; // delta parameter/angle
 
-    AHFinder(int npoints);
+    SpectralSolver(int npoints, int Nspec);
+
+
+    void initialize(const Spacetime& spacetime, const double f0);
+
+    // best way to find coeffs
+    void gradient_descent(const Spacetime& spacetime);
 
     // area infinitessimal on surface
     double dA(const int i);
@@ -64,12 +74,9 @@ public:
     double d(const std::vector<double> &field, int i);
     double d2(const std::vector<double> &field, int i);
 
-    void initialize(const Spacetime& spacetime, const double f0);
-    void relax();
+    void residual();
     void refresh(const Spacetime& spacetime);
     void refresh_pureBH();
-    void refresh_Nakamura();
-    double beta_external(double x, double y, double c, double e);
 
     void save(const std::string &filename);
 

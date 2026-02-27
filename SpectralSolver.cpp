@@ -1,20 +1,25 @@
 #include "SpectralSolver.hpp"
 #include "Spacetime.hpp"
 #include "params.hpp"
+#include "mymaths.hpp"
 #include <iostream>
 #include <cmath>
 #include <fstream>
 #include <string>
 
-SpectralSolver::SpectralSolver(int npoints) {
+SpectralSolver::SpectralSolver(int npoints, int Nspec) {
     sigma.resize(npoints);
     f.resize(npoints);
+    dfds.resize(npoints);
     psi.resize(npoints);
     W.resize(npoints);
     dpsi_dR.resize(npoints);
     dW_dR.resize(npoints);
     dfdt.resize(npoints);
+    coeff.resize(Nspec);
+    J.resize(Nspec);
     num_points = npoints;
+    N = Nspec;
 
     // double dx = (Params::XU-Params::XL)/Params::NX;
     // double dy = (Params::YU-Params::YL)/Params::NY;
@@ -25,11 +30,22 @@ SpectralSolver::SpectralSolver(int npoints) {
 
 void SpectralSolver::initialize(const Spacetime& spacetime, const double f0) {
     double x = 0., y = 0.;
+
+    // initial Legendre coefficients
+    for (size_t j = 0; j < N; j++) coeff[j] = 0.;
+    for (size_t j = 0; j < N; j++) J[j] = 0.;
+    for (size_t j = 0; j < N; j++)  if (j%2==0)  {
+        coeff[j] = 5./(1.+j*j*pow(-1,1+j/2.));
+    }
+
     for (size_t i = 0; i < num_points; ++i) {
 
         // cell centred
+        
+        
         sigma[i] = (i + 1./2.) * ds;
-        f[i] = f0;           // initial guess for horizon radius
+        f[i] = mymaths::LegendreSeries(coeff,cos(sigma[i]));
+        dfds[i] = mymaths::LegendreSeriesDiff1(coeff,cos(sigma[i]));
         dfdt[i] = 0.;
         psi[i] = 0.;
         dpsi_dR[i] = 0.;
@@ -39,6 +55,64 @@ void SpectralSolver::initialize(const Spacetime& spacetime, const double f0) {
     }
 
     std::cout << " - setting f[i] = " << f0 << std::endl;
+}
+
+void SpectralSolver::gradient_descent(const Spacetime& spacetime) {
+    //
+    double RES0 = 0.;
+    double delta = 0.000001;
+    double delta_min = 0.000001;
+    double modJ = 0.;
+    double alpha = 0.01;
+    double alpha_min = 0.001;
+    int vk = 5000; // verbosity in k
+    double halflife = 2000.; // alpha gets smaller
+    for (size_t k = 0; k < 40001; k++) {
+
+
+        refresh(spacetime);
+        residual();
+        RES0 = res();
+        alpha *= (1. - 1./halflife);
+        if (alpha<alpha_min) alpha = alpha_min;
+        // if (delta>delta_min) delta *= (1.-1./halflife);
+
+        if(k%vk==0) std::cout << " * - * descent step = " << k << " * initial res : " << RES0 << "\n";
+
+        for (size_t j = 0; j < N; j++)  if (j%2==0)  {
+
+            coeff[j] += delta;
+
+            for (size_t i = 0; i < num_points; ++i) {
+                f[i] = mymaths::LegendreSeries(coeff,cos(sigma[i]));
+                dfds[i] = mymaths::LegendreSeriesDiff1(coeff,cos(sigma[i]));
+            }
+
+            refresh(spacetime);
+            residual();
+
+            J[j] = (res()-RES0)/delta;
+            modJ += J[j]*J[j];
+            // if(k%vk==0) std::cout << " * j = " << j << " : cj " << coeff[j] << ", J : " << J[j] << "\n";
+
+            coeff[j] -= delta; // undo teh change for next deriv
+        }
+
+        modJ = sqrt(modJ);
+
+        for (size_t j = 0; j < N; j++)  if (j%2==0)  {
+            coeff[j] -= alpha*J[j]/modJ;
+        }
+
+        for (size_t i = 0; i < num_points; ++i) {
+                f[i] = mymaths::LegendreSeries(coeff,cos(sigma[i]));
+                dfds[i] = mymaths::LegendreSeriesDiff1(coeff,cos(sigma[i]));
+            }
+
+        refresh(spacetime);
+        residual();
+        modJ = 0.;
+    }
 }
 
 // // 1st derivative // 4th order
@@ -179,10 +253,9 @@ double SpectralSolver::area() {
 // flat (conformal) area
 double SpectralSolver::area_flat() {
     double A = 0.;
-    double dfds = 0.;
     double geom = 0.;
     for (size_t i = 0; i < num_points; ++i) {
-        geom = sqrt((f[i]*f[i]) + d(f,i)*d(f,i));
+        geom = sqrt((f[i]*f[i]) + dfds[i]*dfds[i]);
         A += 2. * Params::pi * f[i] * sin(sigma[i]) * geom * ds;
     }
     // two because of reflective symmetry
@@ -263,14 +336,18 @@ double SpectralSolver::mass_SC() {
 double SpectralSolver::res() {
     double A = 0.;
     double B = 0.;
+    double C = 0.;
+    double D = 0.;
     double integrand = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         // area 
         A += dA(i);
         B += dA(i) * dfdt[i];
+        C += dfdt[i]*dfdt[i] * sin(sigma[i]);
+        D += dfdt[i]*dfdt[i];
     }
     // two because of reflective symmetry
-    return B/A;
+    return C/num_points;
 }
 
 
@@ -319,28 +396,42 @@ void SpectralSolver::refresh(const Spacetime& spacetime) {
     double x = 0., y = 0.;
     double df = 0., dpsi = 0., dW=0.;
     double test_bh_mass = 1.0;
+    double TH = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         // for numerical spherical radius R deriv
         df = ds * f[i];
+        TH = sigma[i];
         // update psi with new coords f,s
-        x = f[i] * sin(sigma[i]);
-        y = f[i] * cos(sigma[i]);
-        psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
-        W[i] = spacetime.get_val_interp(spacetime.W,x,y);
-        // calculate d_psi/d_r
-        x = (f[i] + df) * sin(sigma[i]);
-        y = (f[i] + df) * cos(sigma[i]);
-        dpsi = spacetime.get_val_interp(spacetime.psi,x,y);
-        dW = spacetime.get_val_interp(spacetime.W,x,y);
-        x = (f[i] - df) * sin(sigma[i]);
-        y = (f[i] - df) * cos(sigma[i]);
-        dpsi -= spacetime.get_val_interp(spacetime.psi,x,y);
-        dW -= spacetime.get_val_interp(spacetime.W,x,y);
-        // set values for spheical radial deriv
-        dpsi_dR[i]=dpsi/(2.*df);
-        dW_dR[i]=dW/(2.*df);
-    }
+        x = f[i] * sin(TH);
 
+        y = f[i] * cos(TH);
+
+        psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
+
+        W[i] = spacetime.get_val_interp(spacetime.W,x,y);
+
+        dpsi_dR[i] = cos(sigma[i]) * spacetime.get_ddy_interp(spacetime.psi,x,y) 
+                    + sin(sigma[i]) * spacetime.get_ddx_interp(spacetime.psi,x,y);
+                    
+        dW_dR[i] = cos(sigma[i]) * spacetime.get_ddy_interp(spacetime.W,x,y) 
+                    + sin(sigma[i]) * spacetime.get_ddx_interp(spacetime.W,x,y);
+  
+        // //  old method 
+        // // calculate d_psi/d_r
+        // x = (f[i] + df) * sin(sigma[i]);
+        // y = (f[i] + df) * cos(sigma[i]);
+        // dpsi = spacetime.get_val_interp(spacetime.psi,x,y);
+        // dW = spacetime.get_val_interp(spacetime.W,x,y);
+        // x = (f[i] - df) * sin(sigma[i]);
+        // y = (f[i] - df) * cos(sigma[i]);
+        // dpsi -= spacetime.get_val_interp(spacetime.psi,x,y);
+        // dW -= spacetime.get_val_interp(spacetime.W,x,y);
+
+
+        // // set values for spheical radial deriv
+        // dpsi_dR[i]=dpsi/(2.*df);
+        // dW_dR[i]=dW/(2.*df);
+    }
 }
 
 // to be called after we update the surface
@@ -358,151 +449,31 @@ void SpectralSolver::refresh_pureBH() {
 
 }
 
-// to be called after we update the surface
-// update external fields such as psi[f,s] 
-void SpectralSolver::refresh_Nakamura() {
-    //
-    double x = 0., y = 0.;
-    double df = 0., dpsi = 0.;
 
-    // nakamura const
-    double M_N = 1.; // assumed implicitly for now
-    double M = 2. * M_N;
-    double e = 0.99;
-    double c = M * 0.65;
-    double a = c*sqrt(1-e*e);
-    double k = 1.5 * pow(c*e,-3);
-    double alpha = 6. / (5.*c*e) * log((1+e)/(1-e));
-    double M_0 = 2. + alpha;
-    double beta_internal = std::asinh(c*e/a); // internal beta
-    double pho = -1.5/(c*e);
-    // nakamura vars
-    double phiN = 0.;
-    double Kr = 0;
-    double Kz = 0.;
-    double beta = 0.;
-    // test
-    bool internal = false;
-
-
-    //
-    for (size_t i = 0; i < num_points; ++i) {
-        // numerical 
-        df = ds * f[i];
-        internal = false;
-
-
-        ////////////////////////////////
-        // R = f
-        x = f[i] * sin(sigma[i]);
-        y = f[i] * cos(sigma[i]);
-        if (x*x/a/a + y*y/c/c < 1.) {
-            beta = beta_internal;
-            internal = true;
-        }
-        else {
-            beta = beta_external(x,y,c,e);
-        }
-        // brrrrrrt!
-        Kr = k * x * (beta - sinh(beta)*cosh(beta)); 
-        Kz = 2. * k * y * (tanh(beta) - beta); 
-        phiN = pho*beta - 0.5*(x*Kr+y*Kz);
-        // output psi!
-        psi[i] = 1. - phiN;
-        // if (true) {
-        //     std::cout << "debugger psi : " << psi[i] 
-        //             << ", z : " << y
-        //             << ", r : " << x
-        //             << ", Kr : " << Kr
-        //             << ", Kz : " << Kz
-        //             << ", a : " << a
-        //             << ", beta : " << beta
-        //             << ", in : " << internal
-        //             << ", Kz : " << Kz
-        //             << ", tau : " << sigma[i]/(2.*M_PI) << "\n";
-        // }
-
-
-        ////////////////////////////
-        // R = f + df
-        x = (f[i] + df) * sin(sigma[i]);
-        y = (f[i] + df) * cos(sigma[i]);
-        if (x*x/a/a + y*y/c/c < 1.) {
-            beta = beta_internal;
-        }
-        else {
-            beta = beta_external(x,y,c,e);
-        }
-        // brrrrrrt!
-        Kr = k * x * (beta - sinh(beta)*cosh(beta)); 
-        Kz = 2. * k * y * (tanh(beta) - beta); 
-        phiN = pho*beta - 0.5*(x*Kr+y*Kz);
-        dpsi = 1.-phiN;
-
-
-        ///////////////////////////
-        // R = f - df
-        x = (f[i] - df) * sin(sigma[i]);
-        y = (f[i] - df) * cos(sigma[i]);
-        if (x*x/a/a + y*y/c/c < 1.) {
-            beta = beta_internal;
-        }
-        else {
-            beta = beta_external(x,y,c,e);
-        }
-        // brrrrrrt!
-        Kr = k * x * (beta - sinh(beta)*cosh(beta)); 
-        Kz = 2. * k * y * (tanh(beta) - beta); 
-        phiN = pho*beta - 0.5*(x*Kr+y*Kz);
-        dpsi -= 1.-phiN;
-
-        //////////////////////////////////
-        // set deriv
-        dpsi_dR[i]=dpsi/(2.*df);
-
-        // no rotation
-        dW_dR[i]=0.;
-        W[i] = 0.;
-
-        // // algebraic schwarzschild
-        // psi[i] = 1. + test_bh_mass/f[i]/2.;
-        // dpsi_dR[i] = - test_bh_mass/f[i]/f[i]/2.;
-    }
-
-}
-
-double SpectralSolver::beta_external(double x, double y, double c, double e) {
-    double A = x*x;
-    double B = x*x + y*y - c*c*e*e;
-    double C = -c*c*e*e;
-    // quadratic formula
-    double ss = (- B + sqrt(B*B - 4.*A*C))/(2.*A);
-    return std::asinh(sqrt(ss));
-}
-
-void SpectralSolver::relax() {
+void SpectralSolver::residual() {
     // Poisson solver towards correct surface
     double term1 = 0.;
     double term2 = 0.;
     double term3 = 0.;
-    double dfds = 0.;
+    double _dfds_ = 0.;
     double R = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         // dfdt[i] = - 0.2 * f[i];
-        dfds = d(f,i);
+        _dfds_ = dfds[i];//d(f,i);
         R = f[i];
         //
-        term1 = (dfds + pow(dfds,3)/R/R)*( cos(sigma[i])/sin(sigma[i]) + 4.*d(psi,i)/psi[i]);
+        term1 = (_dfds_ + pow(_dfds_,3)/R/R)*( cos(sigma[i])/sin(sigma[i]) + 4.*d(psi,i)/psi[i]);
         //
-        term2 = - dfds * dfds * (4.*dpsi_dR[i]/psi[i] + 3./R);
+        term2 = - _dfds_ * _dfds_ * (4.*dpsi_dR[i]/psi[i] + 3./R);
         //
         term3 = -2.*R - 4.*R*R*dpsi_dR[i]/psi[i];
         //
-        dfdt[i] = d2(f,i) + term1 + term2 + term3;
+        dfdt[i] = abs(d2(f,i) + term1 + term2 + term3);
     }
-    for (size_t i = 0; i < num_points; ++i) {
-        f[i] = f[i] + dfdt[i] * dt;
-    }
+    // removed moving the surface
+    // for (size_t i = 0; i < num_points; ++i) {
+    //     f[i] = f[i] + dfdt[i] * dt;
+    // }
 }
 
 

@@ -24,13 +24,13 @@ int main() {
     Spacetime spacetime;
     // spacetime.set_data_nakamura_prolate();
     // spacetime.set_data_nakamura_oblate();
-    spacetime.set_data_BH();
+    // spacetime.set_data_BH();
 
     // loads initial data files e.g. .dat
     DataLoader loader;
 
     // // loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
-    // loader.loadCSV(spacetime, "data/NakamuraYesHorizon.csv", "data/NakamuraNoHorizon.csv");
+    loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
 
     // apparent horizon finder object
     AHFinder ahfinder(Params::AH_NPOINTS);
@@ -41,6 +41,9 @@ int main() {
     // RK4 shooter
     Shooter shooter(Params::SH_NPOINTS);
 
+    // spectral solver
+    SpectralSolver spectral(Params::SP_NPOINTS, Params::PL_LMAX);
+
    
     
     //////////////////////////
@@ -50,6 +53,8 @@ int main() {
     ahfinder.hello();
     surface.hello();
     shooter.hello();
+    spectral.hello();
+
 
     ///////////////////////////
     // Run Code
@@ -65,11 +70,13 @@ int main() {
     // initial radii
     double r_horizon = Params::RH;
     double r_extraction = Params::RX;
+    double r_spectral = Params::RS;
 
     // data
     ahfinder.initialize(spacetime,r_horizon);
     surface.initialize(spacetime,r_extraction);
     shooter.initialize(r_horizon);
+    spectral.initialize(spacetime, r_spectral);
     ahfinder.save("before");
 
     /////////
@@ -95,7 +102,7 @@ int main() {
 
     ///////////////////////
     // relaxation iterations for AH solver          
-    for (size_t i = 0; i < 1000001; i++)      
+    for (size_t i = 0; i < 1600001; i++)      
     {
         // ahfinder.refresh_Nakamura();
         ahfinder.refresh(spacetime);
@@ -152,6 +159,30 @@ int main() {
 
     // save shooting solution
     shooter.save("shot");
+
+    // spectral stuff
+    std::cout << "\n";
+    std::cout << "*======================*\n";
+    std::cout << "| Spectral Solver <> ! |\n";
+    std::cout << "*======================*\n\n";
+    spectral.refresh(spacetime);
+    spectral.gradient_descent(spacetime);
+    spectral.residual(); // to update the residual
+    spectral.save("spectral");
+    std::cout << "Spec res : " << spectral.res() << "\n";
+
+    // output from shooter
+    std::cout << "\n* ============ Spectral ================ *\n";
+    std::cout << "| Horizon R0 = " << spectral.f[0] << "\n";
+    std::cout << "| Horizon RE = " << spectral.f[spectral.num_points-1] << "\n";
+    std::cout << "| Horizon Area = " << spectral.area() << "\n";
+    std::cout << "| Horizon Res = " << spectral.res() << "\n";
+    std::cout << "| Horizon Irreducible Mass = " << spectral.mass_irr() << "\n";
+    std::cout << "| Horizon Radius = " << spectral.r() << "\n";
+    std::cout << "| Horizon Eccentricity = " << spectral.eccentricity() << "\n";
+    std::cout << "| Horizon Spin = " << spectral.a_H() << "\n";
+    std::cout << "| Horizon Dimensionless Spin = " << spectral.chi_H() << "\n";
+    std::cout << "* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ * \n";
 
     
 

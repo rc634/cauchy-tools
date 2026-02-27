@@ -319,28 +319,42 @@ void AHFinder::refresh(const Spacetime& spacetime) {
     double x = 0., y = 0.;
     double df = 0., dpsi = 0., dW=0.;
     double test_bh_mass = 1.0;
+    double TH = 0.;
     for (size_t i = 0; i < num_points; ++i) {
         // for numerical spherical radius R deriv
         df = ds * f[i];
+        TH = sigma[i];
         // update psi with new coords f,s
-        x = f[i] * sin(sigma[i]);
-        y = f[i] * cos(sigma[i]);
-        psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
-        W[i] = spacetime.get_val_interp(spacetime.W,x,y);
-        // calculate d_psi/d_r
-        x = (f[i] + df) * sin(sigma[i]);
-        y = (f[i] + df) * cos(sigma[i]);
-        dpsi = spacetime.get_val_interp(spacetime.psi,x,y);
-        dW = spacetime.get_val_interp(spacetime.W,x,y);
-        x = (f[i] - df) * sin(sigma[i]);
-        y = (f[i] - df) * cos(sigma[i]);
-        dpsi -= spacetime.get_val_interp(spacetime.psi,x,y);
-        dW -= spacetime.get_val_interp(spacetime.W,x,y);
-        // set values for spheical radial deriv
-        dpsi_dR[i]=dpsi/(2.*df);
-        dW_dR[i]=dW/(2.*df);
-    }
+        x = f[i] * sin(TH);
 
+        y = f[i] * cos(TH);
+
+        psi[i] = spacetime.get_val_interp(spacetime.psi,x,y);
+
+        W[i] = spacetime.get_val_interp(spacetime.W,x,y);
+
+        dpsi_dR[i] = cos(sigma[i]) * spacetime.get_ddy_interp(spacetime.psi,x,y) 
+                    + sin(sigma[i]) * spacetime.get_ddx_interp(spacetime.psi,x,y);
+                    
+        dW_dR[i] = cos(sigma[i]) * spacetime.get_ddy_interp(spacetime.W,x,y) 
+                    + sin(sigma[i]) * spacetime.get_ddx_interp(spacetime.W,x,y);
+  
+        // //  old method 
+        // // calculate d_psi/d_r
+        // x = (f[i] + df) * sin(sigma[i]);
+        // y = (f[i] + df) * cos(sigma[i]);
+        // dpsi = spacetime.get_val_interp(spacetime.psi,x,y);
+        // dW = spacetime.get_val_interp(spacetime.W,x,y);
+        // x = (f[i] - df) * sin(sigma[i]);
+        // y = (f[i] - df) * cos(sigma[i]);
+        // dpsi -= spacetime.get_val_interp(spacetime.psi,x,y);
+        // dW -= spacetime.get_val_interp(spacetime.W,x,y);
+
+
+        // // set values for spheical radial deriv
+        // dpsi_dR[i]=dpsi/(2.*df);
+        // dW_dR[i]=dW/(2.*df);
+    }
 }
 
 // to be called after we update the surface

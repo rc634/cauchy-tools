@@ -152,9 +152,9 @@ const double Spacetime::get_ddy_interp(const std::vector<double>& field, double 
 
     // Bilinear interpolation
     double val = (f11 - f10) * di +
-                 (f01 - f00) * di;
+                 (f01 - f00) * (1. - di);
 
-    return val / dy; // dx needed as di dj are fractional coordinates 
+    return val / dy; // dy needed as di dj are fractional coordinates 
 }
 
 
@@ -188,7 +188,7 @@ void Spacetime::set_data_nakamura_prolate() {
     double M_N = 1.; // assumed implicitly for now
     double M = 2. * M_N;
     double e = 0.99;
-    double c = M * 0.5;
+    double c = M * 0.4;
     double a = c*sqrt(1-e*e);
     double k = 1.5 * pow(c*e,-3);
     double alpha = 6. / (5.*c*e) * log((1+e)/(1-e));

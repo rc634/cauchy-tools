@@ -23,7 +23,7 @@ public:
     double ds; // delta parameter/angle
 
     // limits
-    double rmax = 5.;
+    double rmax = 8.;
     double rmin = 10e-20;
     bool OOB = false; // out of bounds for shooter!
     double g_END = 0.; // last g value from pi/2 - epsilon

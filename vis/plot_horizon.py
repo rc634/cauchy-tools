@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load the .dat file
-data = np.loadtxt("../data/relaxed.dat", delimiter=',')
+data = np.loadtxt("../data/spectral.dat", delimiter=',')
 
 # Column 1 = radius, Column 2 = angle (radians)
 r = data[:, 0]
