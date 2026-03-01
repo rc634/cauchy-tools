@@ -24,13 +24,12 @@ int main() {
     Spacetime spacetime;
     // spacetime.set_data_nakamura_prolate();
     // spacetime.set_data_nakamura_oblate();
-    // spacetime.set_data_BH();
+    spacetime.set_data_BH();
 
     // loads initial data files e.g. .dat
     DataLoader loader;
 
-    // // loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
-    loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
+    // loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat");
 
     // apparent horizon finder object
     AHFinder ahfinder(Params::AH_NPOINTS);

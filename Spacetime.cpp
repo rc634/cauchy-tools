@@ -310,7 +310,7 @@ double Spacetime::beta_external_oblate(double x, double y, double a, double e) {
 void Spacetime::set_data_BH() {
 
     // coords 
-    double x=0., y=0.;
+    double x=0., y=0., r=0., cos_theta=0.;
 
     // zero W 
     for (size_t k = 0; k < nx*ny-1; k++)
@@ -321,6 +321,10 @@ void Spacetime::set_data_BH() {
     // BH mass const
     double M = 1.;
 
+    // perturbative ellipse
+    double eps = 0.0001;
+    double PL = 0.; // legendre polynomial
+
     // loop i and j and set psi
     for (size_t i = 0; i < nx-1; i++)
     {
@@ -330,7 +334,13 @@ void Spacetime::set_data_BH() {
 
             y = (j+0.5)*dy;
 
-            psi[index(i,j)] = 1. + 0.5*M/sqrt(x*x+y*y);
+            r = sqrt(x*x+y*y);
+
+            cos_theta = y/r;
+
+            PL = 0.5*(3.*cos_theta*cos_theta - 1.); // L=2
+
+            psi[index(i,j)] = 1. + 0.5*M/r + eps*PL/r/r/r;
         }
     }
 }
