@@ -60,14 +60,14 @@ void SpectralSolver::initialize(const Spacetime& spacetime, const double f0) {
 void SpectralSolver::gradient_descent(const Spacetime& spacetime) {
     //
     double RES0 = 0.;
-    double delta = 0.000001;
-    double delta_min = 0.000001;
+    double delta = 0.001;
+    double delta_min = 0.00001;
     double modJ = 0.;
     double alpha = 0.01;
     double alpha_min = 0.001;
-    int vk = 5000; // verbosity in k
-    double halflife = 2000.; // alpha gets smaller
-    for (size_t k = 0; k < 40001; k++) {
+    int vk = 500; // verbosity in k
+    double halflife = 5000.; // alpha gets smaller
+    for (size_t k = 0; k < 15001; k++) {
 
 
         refresh(spacetime);
@@ -75,7 +75,7 @@ void SpectralSolver::gradient_descent(const Spacetime& spacetime) {
         RES0 = res();
         alpha *= (1. - 1./halflife);
         if (alpha<alpha_min) alpha = alpha_min;
-        // if (delta>delta_min) delta *= (1.-1./halflife);
+        if (delta>delta_min) delta *= (1.-1./halflife);
 
         if(k%vk==0) std::cout << " * - * descent step = " << k << " * initial res : " << RES0 << "\n";
 

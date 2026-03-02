@@ -13,7 +13,7 @@ x3, y3 = data3[:,1], data3[:,0]
 
 # -- pert thry
 M = 1.
-eps = 0.0001
+eps = 0.001
 num = 200
 theta = np.zeros(num)
 dtheta = np.pi/2/num
@@ -22,14 +22,14 @@ for i in range(0,num):
     theta[i] = (i+0.5)*dtheta
     CS = np.cos(theta[i])
     PL = 0.5*(3.*CS*CS - 1.)
-    analytic[i] = 0.5 * M * (1. +  eps * 10. * M**(-3) * PL)
+    analytic[i] = 0.5 * M * (1. +  eps * 6. * PL / ( M*M*M ) )
 
 # --- Plot setup ---
 plt.figure(figsize=(8,6))
 plt.plot(theta, analytic, linestyle='-', label="Analytic", color='k')
 plt.plot(x1, y1, linestyle='-', label="Relaxation")
 plt.plot(x2, y2, linestyle='-', label="Shooting")
-plt.plot(x3, y3, linestyle='-', label="Spectral")
+# plt.plot(x3, y3, linestyle='-', label="Spectral")
 
 
 # Vertical line at pi/2

@@ -322,15 +322,15 @@ void Spacetime::set_data_BH() {
     double M = 1.;
 
     // perturbative ellipse
-    double eps = 0.0001;
+    double eps = 0.001;
     double PL = 0.; // legendre polynomial
 
     // loop i and j and set psi
-    for (size_t i = 0; i < nx-1; i++)
+    for (size_t i = 0; i <= nx-1; i++)
     {
         x = (i+0.5)*dx;
 
-        for (size_t j = 0; j < ny-1; j++) {
+        for (size_t j = 0; j <= ny-1; j++) {
 
             y = (j+0.5)*dy;
 

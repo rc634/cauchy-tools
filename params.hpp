@@ -22,7 +22,7 @@ namespace Params {
 
     // sample points
     constexpr int AH_NPOINTS = 256; // relax
-    constexpr int SP_NPOINTS = 512;  // spectral
+    constexpr int SP_NPOINTS = 1024;  // spectral
     constexpr int EX_NPOINTS = 2048; // extraction
     constexpr int SH_NPOINTS = 40000; //shoot
 
