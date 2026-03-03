@@ -22,7 +22,7 @@ for i in range(0,num):
     theta[i] = (i+0.5)*dtheta
     CS = np.cos(theta[i])
     PL = 0.5*(3.*CS*CS - 1.)
-    analytic[i] = 0.5 * M * (1. +  eps * 6. * PL / ( M*M*M ) )
+    analytic[i] = 0.5 * M * (1. +  eps * 6.666666666 * PL / (M*M*M ) )
 
 # --- Plot setup ---
 plt.figure(figsize=(8,6))
