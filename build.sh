@@ -1,2 +1,1 @@
-g++ -std=c++17 *.cpp -O2 -o ahfinder
-
+make -j$(sysctl -n hw.logicalcpu)

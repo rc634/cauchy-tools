@@ -322,7 +322,7 @@ void Spacetime::set_data_BH() {
     double M = 1.;
 
     // perturbative ellipse
-    double eps = 0.001;
+    double eps = 0.003;
     double PL = 0.; // legendre polynomial
 
     // loop i and j and set psi
@@ -340,7 +340,7 @@ void Spacetime::set_data_BH() {
 
             PL = 0.5*(3.*cos_theta*cos_theta - 1.); // L=2
 
-            psi[index(i,j)] = 1. + 0.5*M/r + eps*PL/r/r/r;
+            psi[index(i,j)] = 1. + 0.5*M/r + eps * pow(0.5*M/r,3) * PL;
         }
     }
 }
