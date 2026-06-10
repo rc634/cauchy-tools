@@ -73,14 +73,14 @@ void Surface::refresh(const Spacetime& spacetime) {
         x = f[i] * sin(TH);
         y = f[i] * cos(TH);
 
-        psi[i] = spacetime.get_val_interp(spacetime.psi, x, y);
-        W[i]   = spacetime.get_val_interp(spacetime.W,   x, y);
+        psi[i] = spacetime.get_val_bicubic(spacetime.psi, x, y);
+        W[i]   = spacetime.get_val_bicubic(spacetime.W,   x, y);
 
-        dpsi_dR[i] = cos(TH) * spacetime.get_ddy_interp(spacetime.psi, x, y)
-                   + sin(TH) * spacetime.get_ddx_interp(spacetime.psi, x, y);
+        dpsi_dR[i] = cos(TH) * spacetime.get_ddy_bicubic(spacetime.psi, x, y)
+                   + sin(TH) * spacetime.get_ddx_bicubic(spacetime.psi, x, y);
 
-        dW_dR[i]   = cos(TH) * spacetime.get_ddy_interp(spacetime.W, x, y)
-                   + sin(TH) * spacetime.get_ddx_interp(spacetime.W, x, y);
+        dW_dR[i]   = cos(TH) * spacetime.get_ddy_bicubic(spacetime.W, x, y)
+                   + sin(TH) * spacetime.get_ddx_bicubic(spacetime.W, x, y);
     }
 }
 
@@ -164,6 +164,15 @@ double Surface::mass_SC() {
     return B / A;
 }
 
+double Surface::mass_ADM() {
+    double A = 0., B = 0.;
+    for (int i = 0; i < num_points; ++i) {
+        A += dA(i);
+        B += dA(i) * dpsi_dR[i];
+    }
+    return -2. * coord_r() * coord_r() * B / A;
+}
+
 double Surface::r() {
     // polar areal radius
     return sqrt(area()/(4.*M_PI));
@@ -237,7 +246,7 @@ double Surface::proper_height() {
     double L = 0.;
     for (int i = 0; i < num_points; ++i) {
         double z = (i + 0.5) * dz;
-        double p = st->get_val_interp(st->psi, 0., z);
+        double p = st->get_val_bicubic(st->psi, 0., z);
         L += p * p * dz;
     }
     return L;
@@ -252,22 +261,27 @@ double Surface::proper_width() {
     double L = 0.;
     for (int i = 0; i < num_points; ++i) {
         double x = (i + 0.5) * dx;
-        double p = st->get_val_interp(st->psi, x, 0.);
+        double p = st->get_val_bicubic(st->psi, x, 0.);
         L += p * p * dx;
     }
     return L;
 }
 
-// Ramanujan approximation for the perimeter of an ellipse with
-// semi-axes H (polar-height) and W (equatorial-width), in curved space
-double Surface::ramanujan_perimeter() {
-    double H = proper_height();
-    double W = proper_width();
-    return Params::pi * (3.*(H+W) - sqrt((3.*H+W)*(H+3.*W)));
+// Recover effective ellipse semi-axes from Ramanujan perimeter inversion,
+// then return the eccentricity sqrt(1 - (min/max)^2)
+double Surface::ramanujan_eccentricity() {
+    double pol = polar_circumference();
+    double eqa = equatorial_circumference();
+    double a = (sqrt(-5.*eqa*eqa + 6.*eqa*pol + 3.*pol*pol) - 2.*eqa + 3.*pol) / (6. * Params::pi);
+    double b = eqa / (2. * Params::pi);
+    if (a == b) return 0.;
+    double mn = std::min(a, b);
+    double mx = std::max(a, b);
+    return sqrt(1. - (mn*mn) / (mx*mx));
 }
 
 // returns true if the point (x,y) lies inside the surface f(sigma)
-// sigma is interpolated linearly from the discrete f array
+// sigma is bicubicolated linearly from the discrete f array
 bool Surface::inside(double x, double y) const {
     double R = sqrt(x*x + y*y);
     if (R == 0.) return true;
@@ -291,7 +305,7 @@ bool Surface::inside(double x, double y) const {
 double Surface::dV(double x, double y) {
     constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
     constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
-    double p = (st != nullptr) ? st->get_val_interp(st->psi, x, y) : 1.0;
+    double p = (st != nullptr) ? st->get_val_bicubic(st->psi, x, y) : 1.0;
     return pow(p, 6) * 2. * Params::pi * x * ddx * ddy;
 }
 
@@ -310,6 +324,307 @@ double Surface::V() {
         }
     }
     return 2. * vol;   // southern hemisphere by reflective symmetry
+}
+
+double Surface::integrate_src() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src, i, j) * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_src_enclosed() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src, i, j) * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src, i, j) * st->get_val(st->srcW, i, j) * x * x * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J_enclosed() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src, i, j) * st->get_val(st->srcW, i, j) * x * x * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_src_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src, i, j) * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_src_enclosed_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src, i, j) * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src, i, j) * st->get_val(st->srcW, i, j) * x * x * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J_enclosed_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src, i, j) * st->get_val(st->srcW, i, j) * x * x * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_src_eff() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src_eff, i, j) * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_src_enclosed_eff() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src_eff, i, j) * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J_eff() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src_eff, i, j) * st->get_val(st->srcW_eff, i, j) * x * x * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J_enclosed_eff() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src_eff, i, j) * st->get_val(st->srcW_eff, i, j) * x * x * dV(x, y);
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_src_eff_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src_eff, i, j) * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_src_enclosed_eff_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src_eff, i, j) * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J_eff_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            total += st->get_val(st->src_eff, i, j) * st->get_val(st->srcW_eff, i, j) * x * x * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+double Surface::integrate_J_enclosed_eff_flat() {
+    if (st == nullptr) return 0.;
+    constexpr double ddx = (Params::XU - Params::XL) / Params::NX;
+    constexpr double ddy = (Params::YU - Params::YL) / Params::NY;
+    double total = 0.;
+    for (int i = 0; i < Params::NX; ++i) {
+        double x = Params::XL + (i + 0.5) * ddx;
+        for (int j = 0; j < Params::NY; ++j) {
+            double y = Params::YL + (j + 0.5) * ddy;
+            if (inside(x, y))
+                total += st->get_val(st->src_eff, i, j) * st->get_val(st->srcW_eff, i, j) * x * x * 2. * Params::pi * x * ddx * ddy;
+        }
+    }
+    return 2. * total;
+}
+
+// the sqrt of theta theta component of the 2 metric
+double Surface::A(int i) {
+    double q = d(f, i) / f[i];
+    return psi[i] * psi[i] * f[i] * sqrt(1. + q * q);
+}
+
+// the sqrt of phi phi component of the 2 metric
+double Surface::B(int i) {
+    return psi[i] * psi[i] * f[i] * sin(sigma[i]);
+}
+
+// dA/dσ = d(ψ²fN)/dσ, analytic chain rule — no nested stencils
+double Surface::Ap(int i) {
+    double p   = psi[i],  pp  = d(psi, i);
+    double f_  = f[i],    fp  = d(f, i),  fpp = d2(f, i);
+    double q   = fp / f_;
+    double N   = sqrt(1. + q*q);
+    double qp  = fpp/f_ - q*q;
+    return 2.*p*pp*f_*N  +  p*p*fp*N  +  p*p*f_*(q*qp/N);
+} // p p f N
+
+// dB/dσ = d(ψ²f sinσ)/dσ, analytic chain rule — no nested stencils
+double Surface::Bp(int i) {
+    double p  = psi[i],  pp = d(psi, i);
+    double f_ = f[i],    fp = d(f, i);
+    double TH = sigma[i];
+    return 2.*p*pp*f_*sin(TH)  +  p*p*fp*sin(TH)  +  p*p*f_*cos(TH);
+} // p p f sin(th)
+
+// d²B/dσ² = d²(ψ²f sinσ)/dσ², analytic — no nested stencils
+double Surface::Bpp(int i) {
+    double p   = psi[i],  pp  = d(psi, i),  ppp = d2(psi, i);
+    double f_  = f[i],    fp  = d(f, i),    fpp = d2(f, i);
+    double TH  = sigma[i];
+    double sinTH = sin(TH), cosTH = cos(TH);
+    double s_term = 2.*(pp*pp + p*ppp)*f_ + 4.*p*pp*fp + p*p*fpp - p*p*f_;
+    double c_term = 4.*p*pp*f_ + 2.*p*p*fp;
+    return s_term * sinTH  +  c_term * cosTH;
+} // d2 ( p p f sin(th) )
+
+// 2d ricci scalar at i
+// metric A^2 d th^2 + B^2 d phi^2
+// 2-Ricci is 2/A^2 * [A'/A B'/B - B''/B]
+double Surface::Ricci(int i) {
+    double A_C  = A(i);
+    double B_C  = B(i);
+    double A_p  = Ap(i);
+    double B_p  = Bp(i);
+    double B_pp = Bpp(i);
+
+    return 2. / (A_C * A_C) * (A_p / A_C * B_p / B_C - B_pp / B_C);
 }
 
 // covariant divergence of the outward unit normal s^i at grid point i
@@ -332,8 +647,8 @@ double Surface::div_s(int i) {
     // following the same pattern as refresh()
     double dpsi_dr = 0., dpsi_dth = 0.;
     if (st != nullptr) {
-        double dpsi_dx  = st->get_ddx_interp(st->psi, x, y);
-        double dpsi_dy  = st->get_ddy_interp(st->psi, x, y);
+        double dpsi_dx  = st->get_ddx_bicubic(st->psi, x, y);
+        double dpsi_dy  = st->get_ddy_bicubic(st->psi, x, y);
         dpsi_dr  = sin(TH) * dpsi_dx + cos(TH) * dpsi_dy;
         dpsi_dth = f[i] * (cos(TH) * dpsi_dx - sin(TH) * dpsi_dy);
     }
@@ -367,6 +682,60 @@ double Surface::K0() {
         B += dA(i) * div_s(i);
     }
     return B / A;
+}
+
+double Surface::K2() {
+    constexpr int trim = 5;
+
+    // 5-point local average of Ricci, computed over interior points only
+    auto R_av = [&](int i) {
+        return (Ricci(i-2) + Ricci(i-1) + Ricci(i) + Ricci(i+1) + Ricci(i+2)) / 5.0;
+    };
+
+    // area-weighted mean of R_av over trimmed range
+    double A = 0., mean = 0.;
+    for (int i = trim; i < num_points - trim - 1; ++i) {
+        A    += dA(i);
+        mean += dA(i) * R_av(i);
+    }
+    mean /= A;
+
+    // area-weighted variance of relative deviation (matches Python vis script)
+    double B = 0.;
+    for (int i = trim; i < num_points - trim - 1; ++i) {
+        double dR = 1.0 - R_av(i) / mean;
+        B += dA(i) * dR * dR;
+    }
+    return B / A;
+}
+
+double Surface::Ricci_mean() {
+    double A = 0., B = 0.;
+    for (int i = 0; i < num_points; ++i) {
+        A += dA(i);
+        B += dA(i) * Ricci(i);
+    }
+    return B / A;
+}
+
+double Surface::RY20() {
+    // Y_2^0(σ) = sqrt(5/4π) * (3cos²σ - 1)/2
+    // returns area-weighted projection: (1/A) ∫ Ricci * Y_20 dA
+    constexpr double prefactor = 0.31539156525; // sqrt(5/(4*pi))
+    double A = 0., B = 0.;
+    for (int i = 0; i < num_points; ++i) {
+        double c = cos(sigma[i]);
+        double Y = prefactor * (3.*c*c - 1.) * 0.5;
+        A += dA(i);
+        B += dA(i) * Ricci(i) * Y;
+    }
+    return (B / A) / Ricci_mean();
+}
+
+double Surface::Ricci_ecc() {
+    // e^2 = (3*sqrt(5*pi)/2) * |RY20|, derived for small deformations from a sphere
+    constexpr double coeff = 3. * 3.96332729760601 / 2.;  // 3*sqrt(5*pi)/2 ~ 5.945
+    return sqrt(coeff * std::abs(RY20()));
 }
 
 // moment of inertia tensor (surface integral version)
@@ -404,7 +773,7 @@ void Surface::moi_vol() {
         for (int j = 0; j < Params::NY; ++j) {
             double y = Params::YL + (j + 0.5) * ddy;
             if (inside(x, y)) {
-                double p  = (st != nullptr) ? st->get_val_interp(st->psi, x, y) : 1.0;
+                double p  = (st != nullptr) ? st->get_val_bicubic(st->psi, x, y) : 1.0;
                 double p2 = p * p;
                 double dv = dV(x, y);
                 Izz       += (p2 * x) * (p2 * x) * dv;
@@ -421,13 +790,43 @@ void Surface::moi_vol() {
     std::cout << std::defaultfloat;
 }
 
+void Surface::smooth_edges(int hw) {
+    std::vector<double> fc = f;   // read from copy so points don't contaminate each other
+
+    for (int i = 0; i < hw; ++i) {
+        double w   = 1.0 - static_cast<double>(i) / hw;  // 1 at edge, 0 at hw
+        int    im  = (i == 0) ? 0 : i - 1;               // ghost: f[-1] = f[0]
+        double avg = (fc[im] + fc[i] + fc[i + 1]) / 3.0;
+        f[i] = (1.0 - w) * fc[i] + w * avg;
+    }
+
+    for (int i = num_points - hw; i < num_points; ++i) {
+        double w   = 1.0 - static_cast<double>(num_points - 1 - i) / hw;  // 0 at hw from end, 1 at last point
+        int    ip  = (i == num_points - 1) ? num_points - 1 : i + 1;      // ghost: f[N] = f[N-1]
+        double avg = (fc[i - 1] + fc[i] + fc[ip]) / 3.0;
+        f[i] = (1.0 - w) * fc[i] + w * avg;
+    }
+}
+
+void Surface::smooth(int hw) {
+    std::vector<double> f_smooth = f;
+    for (int i = hw; i < num_points - hw; ++i) {
+        double s = 0.;
+        for (int j = -hw; j <= hw; ++j) s += f[i + j];
+        f_smooth[i] = s / (2 * hw + 1);
+    }
+    f = f_smooth;
+    if (st != nullptr) refresh(*st);
+}
+
 void Surface::save(const std::string& filename) {
     std::ofstream out("data/" + filename + ".dat");
     if (!out.is_open())
         throw std::runtime_error("Could not open file: " + filename);
     out << std::scientific << std::setprecision(Params::save_precision);
+    out << "# theta  f  psi  div_s  Ricci\n";
     for (int i = 0; i < num_points; ++i)
-        out << f[i] << "," << sigma[i] << "\n";
+        out << sigma[i] << "  " << f[i] << "  " << psi[i] << "  " << div_s(i)  << "  " << Ricci(i) << "\n";
     out.close();
 }
 
@@ -435,26 +834,59 @@ void Surface::cout_state() {
     //std::cout << std::scientific << std::setprecision(Params::cout_precision);
     // std::cout << std::setprecision(Params::cout_precision);
     // std::cout << "\n* ============ 2-Surface ============== *\n";
-    std::cout << "\n* ========== Proper Geometry ========== *\n";
+    std::cout << "\n* ========== Surface Geometry ========== *\n";
     std::cout << "| Area               = " << area() << "\n";
+    std::cout << "| Polar circ         = " << polar_circumference() << "\n";
+    std::cout << "| Equatorial circ    = " << equatorial_circumference() << "\n";
+    std::cout << "| Ramanujan ecc      = " << ramanujan_eccentricity() << "\n";
+    std::cout << "|\n* =========== Curvatures ============== *\n";
+    std::cout << "| Mean Div s         = " << K0() << "\n";
+    std::cout << "| Mean 2-Ricci       = " << Ricci_mean() << "\n";
+    std::cout << "| Ricci Deviation    = " << K2() << "\n";
+    std::cout << "| RY20               = " << RY20() << "\n";
+    std::cout << "| Ricci ecc          = " << Ricci_ecc() << "\n";
+    std::cout << "|\n* ============= Physics =============== *\n";
+    std::cout << "| Hawking Mass       = " << mass_irr() << "\n";
+    std::cout << "| Dimensionless Spin = " << chi_H() << "\n";
+    std::cout << "| Psi Avg            = " << psi_avg() << "\n";
+    std::cout << "| 2R<psi-1>          = " << 2. * coord_r() * (psi_avg() - 1.) << "\n";
+    std::cout << "| ADM Mass (dpsi/dR) = " << mass_ADM() << "\n";
+    std::cout << "|\n* ========= Internal Geometry ========= *\n";
     std::cout << "| Height             = " << proper_height() << "\n";
     std::cout << "| Width              = " << proper_width() << "\n";
     std::cout << "| Eccentricity       = " << eccentricity() << "\n";
-    std::cout << "| Polar circ         = " << polar_circumference() << "\n";
-    std::cout << "| Equatorial circ    = " << equatorial_circumference() << "\n";
     std::cout << "| Volume             = " << V() << "\n";
-    std::cout << "| Mean Curvature     = " << K0() << "\n";
-    std::cout << "|\n* ============= Physics =============== *\n";
-    std::cout << "| Irreducible Mass   = " << mass_irr() << "\n";
-    std::cout << "| Dimensionless Spin = " << chi_H() << "\n";
-    std::cout << "| Psi Avg            = " << psi_avg() << "\n";
-    std::cout << "|\n* ========== Other Geometry =========== *\n";
+    std::cout << "|\n* =========== Coord Stuff ============= *\n";
     std::cout << "| PA Radius          = " << r() << "\n";
     std::cout << "| Coord Radius Avg   = " << coord_r() << "\n";
     std::cout << "| Coord Eccentricity = " << coord_eccentricity() << "\n";
-    std::cout << "| Ramanujan perim    = " << ramanujan_perimeter() << "\n";
+    std::cout << "|\n* ========== Matter Source ============ *\n";
+    std::cout << "| Total Mass         = " << integrate_src() << "\n";
+    std::cout << "| Mass Contained     = " << integrate_src_enclosed() << "\n";
+    std::cout << "| Total AngMom       = " << integrate_J() << "\n";
+    std::cout << "| Contained AngMom   = " << integrate_J_enclosed() << "\n";
+    std::cout << "|\n* ======== Flat Source Integrals ======= *\n";
+    std::cout << "| Total Mass (flat)  = " << integrate_src_flat() << "\n";
+    std::cout << "| Mass Cont  (flat)  = " << integrate_src_enclosed_flat() << "\n";
+    std::cout << "| Total J    (flat)  = " << integrate_J_flat() << "\n";
+    std::cout << "| Contained J(flat)  = " << integrate_J_enclosed_flat() << "\n";
+    std::cout << "|\n* ======== Effective Source ============ *\n";
+    std::cout << "| Total Mass (eff)   = " << integrate_src_eff() << "\n";
+    std::cout << "| Mass Cont  (eff)   = " << integrate_src_enclosed_eff() << "\n";
+    std::cout << "| Total J    (eff)   = " << integrate_J_eff() << "\n";
+    std::cout << "| Contained J(eff)   = " << integrate_J_enclosed_eff() << "\n";
+    std::cout << "|\n* ====== Flat Effective Source ========= *\n";
+    std::cout << "| Total Mass (eff,f) = " << integrate_src_eff_flat() << "\n";
+    std::cout << "| Mass Cont  (eff,f) = " << integrate_src_enclosed_eff_flat() << "\n";
+    std::cout << "| Total J    (eff,f) = " << integrate_J_eff_flat() << "\n";
+    std::cout << "| Contained J(eff,f) = " << integrate_J_enclosed_eff_flat() << "\n";
     std::cout << "* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ *\n";
     std::cout << std::defaultfloat;
+
+    // verbose ricci printing
+    // for (int i = 0; i < num_points; ++i)
+    // std::cout << "i=" << i << " Ricci=" << Ricci(i) << "\n";
+
 }
 
 void Surface::print() const {

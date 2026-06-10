@@ -5,8 +5,8 @@
 
 namespace Params {
 
-    constexpr int NX = 1024;
-    constexpr int NY = 1024;
+    constexpr int NX = 4096;
+    constexpr int NY = 4096;
 
     // coords of x/y axes, may not be cartesian
     constexpr double XL = 0.;
@@ -21,10 +21,11 @@ namespace Params {
     constexpr int PL_LMAX = 16; 
 
     // sample points
-    constexpr int AH_NPOINTS = 128; // relax
+    constexpr int AH_NPOINTS = 256; // relax
     constexpr int SP_NPOINTS = 512;  // spectral
+    constexpr int CH_NPOINTS = 32;  // chase
     constexpr int EX_NPOINTS = 2048; // extraction
-    constexpr int SH_NPOINTS = 16000; //shoot
+    constexpr int SH_NPOINTS = 2000; //shoot
 
     // initial radii
     constexpr double RH = 5.;

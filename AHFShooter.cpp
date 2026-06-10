@@ -19,9 +19,9 @@ double AHFShooter::DGDS(const Spacetime& spacetime, double F, double G, double T
     double x = F * sin(TH);
     double y = F * cos(TH);
 
-    double ddx   = spacetime.get_ddx_interp(spacetime.psi, x, y);
-    double ddy   = spacetime.get_ddy_interp(spacetime.psi, x, y);
-    double PSI   = spacetime.get_val_interp(spacetime.psi, x, y);
+    double ddx   = spacetime.get_ddx_bicubic(spacetime.psi, x, y);
+    double ddy   = spacetime.get_ddy_bicubic(spacetime.psi, x, y);
+    double PSI   = spacetime.get_val_bicubic(spacetime.psi, x, y);
     double DRPSI = ddx * sin(TH) + ddy * cos(TH);
     double PSIP  = ddx * cos(TH) - ddy * sin(TH);
 
@@ -41,9 +41,9 @@ void AHFShooter::shoot(const Spacetime& spacetime, double rH0) {
     // pole boundary condition: small-angle approximation for g[0]
     double x0    = rH0 * sin(sigma[0]);
     double y0    = rH0 * cos(sigma[0]);
-    double psi0  = spacetime.get_val_interp(spacetime.psi, x0, y0);
-    double dR0   = spacetime.get_ddx_interp(spacetime.psi, x0, y0) * sin(sigma[0])
-                 + spacetime.get_ddy_interp(spacetime.psi, x0, y0) * cos(sigma[0]);
+    double psi0  = spacetime.get_val_bicubic(spacetime.psi, x0, y0);
+    double dR0   = spacetime.get_ddx_bicubic(spacetime.psi, x0, y0) * sin(sigma[0])
+                 + spacetime.get_ddy_bicubic(spacetime.psi, x0, y0) * cos(sigma[0]);
     f[0] = rH0;
     g[0] = (rH0 + 2.*rH0*rH0*dR0/psi0) * sigma[0];
 
@@ -71,9 +71,9 @@ void AHFShooter::shoot(const Spacetime& spacetime, double rH0) {
     int iE      = num_points - 1;
     double xE   = f[iE] * sin(sigma[iE]);
     double yE   = f[iE] * cos(sigma[iE]);
-    double psiE = spacetime.get_val_interp(spacetime.psi, xE, yE);
-    double dRE  = spacetime.get_ddx_interp(spacetime.psi, xE, yE) * sin(sigma[iE])
-                + spacetime.get_ddy_interp(spacetime.psi, xE, yE) * cos(sigma[iE]);
+    double psiE = spacetime.get_val_bicubic(spacetime.psi, xE, yE);
+    double dRE  = spacetime.get_ddx_bicubic(spacetime.psi, xE, yE) * sin(sigma[iE])
+                + spacetime.get_ddy_bicubic(spacetime.psi, xE, yE) * cos(sigma[iE]);
     g_END = (f[iE] + 2.*f[iE]*f[iE]*dRE/psiE) * sigma[0];
 }
 
@@ -109,6 +109,20 @@ void AHFShooter::interval_bisection(const Spacetime& spacetime) {
     }
 
     shoot(spacetime, fc);
+}
+
+void AHFShooter::relax() {
+    double term1, term2, term3, dfds, R;
+    for (int i = 0; i < num_points; ++i) {
+        dfds  = d(f, i);
+        R     = f[i];
+        term1 = (dfds + pow(dfds,3)/R/R) * (cos(sigma[i])/sin(sigma[i]) + 4.*d(psi,i)/psi[i]);
+        term2 = -dfds * dfds * (4.*dpsi_dR[i]/psi[i] + 3./R);
+        term3 = -2.*R - 4.*R*R*dpsi_dR[i]/psi[i];
+        dfdt[i] = d2(f,i) + term1 + term2 + term3;
+    }
+    for (int i = 0; i < num_points; ++i)
+        f[i] += dfdt[i] * dt;
 }
 
 void AHFShooter::hello() const {

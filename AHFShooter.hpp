@@ -26,5 +26,7 @@ public:
     // bisection search over initial radius to satisfy the equatorial BC g_END = 0
     void interval_bisection(const Spacetime& spacetime);
 
+    void relax();
+
     void hello() const;
 };
