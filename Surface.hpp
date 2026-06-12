@@ -18,6 +18,7 @@ public:
     std::vector<double> dfdt;
 
     const Spacetime* st = nullptr;  // set by refresh(); null in flat-space mode
+    std::string save_path = "data";
 
     Surface(int npoints);
 

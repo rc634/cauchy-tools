@@ -10,7 +10,7 @@
 #include "AHFPollax.hpp"
 #include "EXSurf.hpp"
 
-int main() {
+int main(int argc, char* argv[]) {
 
     ///////////////////////////
     // Hello World!!
@@ -33,9 +33,15 @@ int main() {
     // perturbed BH test (controlled by small param epsilon internally)
     // spacetime.set_data_BH();
 
-    // loads initial data files e.g. .dat
+    std::string data_path = (argc > 1) ? argv[1] : "data";
     DataLoader loader;
-    loader.loadCSV(spacetime, "data/psi.dat", "data/W.dat", "data/rho-raw.dat", "data/v-raw.dat", "data/rho-eff.dat", "data/v-eff.dat");
+    loader.loadCSV(spacetime,
+        data_path + "/psi.dat",
+        data_path + "/W.dat",
+        data_path + "/rho-raw.dat",
+        data_path + "/v-raw.dat",
+        data_path + "/rho-eff.dat",
+        data_path + "/v-eff.dat");
 
     /////////////////////////////////////////////////
     // initial radii
@@ -46,6 +52,7 @@ int main() {
     //////////////////////////////////////////////////////////////
     // extraction surfaces
     EXSurf exsurf(Params::EX_NPOINTS);
+    exsurf.save_path = data_path;
 
     // // flat space (no spacetime loaded)
     // exsurf.announce("Spherical Surface");
@@ -71,6 +78,21 @@ int main() {
     exsurf.refresh(spacetime);
     exsurf.extraction_output();
     exsurf.set_sphere(30.0);
+    exsurf.refresh(spacetime);
+    exsurf.extraction_output();
+    exsurf.set_sphere(40.0);
+    exsurf.refresh(spacetime);
+    exsurf.extraction_output();
+    exsurf.set_sphere(50.0);
+    exsurf.refresh(spacetime);
+    exsurf.extraction_output();
+    exsurf.set_sphere(60.0);
+    exsurf.refresh(spacetime);
+    exsurf.extraction_output();
+    exsurf.set_sphere(70.0);
+    exsurf.refresh(spacetime);
+    exsurf.extraction_output();
+    exsurf.set_sphere(80.0);
     exsurf.refresh(spacetime);
     exsurf.extraction_output();
 
@@ -121,6 +143,7 @@ int main() {
 
     // AHF Chase Method
     AHFChase chaser(Params::CH_NPOINTS);
+    chaser.save_path = data_path;
     chaser.announce("AHFChase");
     chaser.initialize(r_horizon);
 
@@ -177,6 +200,7 @@ int main() {
 
     // AHF Pollax Method (polygrid relaxation)
     AHFPollax pollax(32);
+    pollax.save_path = data_path;
     pollax.announce("AHFPollax");
     pollax.initialize(r_horizon);
 

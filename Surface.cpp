@@ -820,7 +820,7 @@ void Surface::smooth(int hw) {
 }
 
 void Surface::save(const std::string& filename) {
-    std::ofstream out("data/" + filename + ".dat");
+    std::ofstream out(save_path + "/" + filename + ".dat");
     if (!out.is_open())
         throw std::runtime_error("Could not open file: " + filename);
     out << std::scientific << std::setprecision(Params::save_precision);
